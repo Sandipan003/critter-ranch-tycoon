@@ -24,13 +24,17 @@
         <button class="hud-btn ad-btn" id="btn-free"><span class="ico">🎁</span><span class="t" id="free-amt">+50</span><span class="ad-tag">▶</span></button>
         <button class="hud-btn ad-btn" id="btn-income"><span class="ico">💰</span><span class="t" id="income-txt">x2 Coins</span><span class="ad-tag">▶</span></button>
         <button class="hud-btn ad-btn" id="btn-golden"><span class="ico">⚡</span><span class="t" id="golden-txt">100% Catch</span><span class="ad-tag">▶</span></button>
+        <button class="hud-btn ad-btn" id="btn-snack"><span class="ico">🍦</span><span class="t" id="snack-txt">x3 Snacks</span><span class="ad-tag">▶</span></button>
+        <button class="hud-btn ad-btn" id="btn-heal"><span class="ico">🩺</span><span class="t" id="heal-txt">Heal all</span><span class="ad-tag">▶</span></button>
       </div>
       <div class="left-btns" id="left-btns">
         <button class="hud-btn round-btn" id="btn-missions" aria-label="Missions">📜<span class="badge" id="mission-badge"></span></button>
         <button class="hud-btn round-btn" id="btn-daily" aria-label="Daily reward">📅<span class="badge" id="daily-badge">!</span></button>
         <button class="hud-btn round-btn" id="btn-dex" aria-label="Critterdex">📖</button>
+        <button class="hud-btn round-btn" id="btn-wheel" aria-label="Lucky Wheel">🎡<span class="badge" id="wheel-badge">!</span></button>
       </div>
       <div id="event-chip"></div>
+      <div id="vip-chip"></div>
       <div id="tut">
         <div class="tut-top"><span id="tut-step"></span><span class="tut-dots" id="tut-dots"></span></div>
         <div class="tut-main"><div class="tut-ico" id="tut-ico"></div><div><div class="tut-title" id="tut-title"></div><div class="tut-text" id="tut-text"></div></div></div>
@@ -65,6 +69,16 @@
     </div>
 
     <div id="boot"><img class="boot-logo" src="./brand/logo.webp" width="960" height="600" alt="Critter Ranch Tycoon" /><div id="boot-text">Loading…</div></div>
+
+    <div id="net-block" role="alertdialog" aria-labelledby="net-title">
+      <div class="nb-card">
+        <div class="nb-ico">📶</div>
+        <div class="nb-title" id="net-title">Internet is off</div>
+        <div class="nb-text">Critter Ranch Tycoon needs the internet. Please turn on Wi-Fi or mobile data.</div>
+        <button id="btn-net-retry">🔄 Try again</button>
+        <div class="nb-status" id="net-status"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

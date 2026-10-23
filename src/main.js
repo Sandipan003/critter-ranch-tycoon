@@ -11,9 +11,13 @@ import { SPECIES } from './world/models.js';
 import { setWorld, worldSpecies } from './world/worlds.js';
 import { loadState } from './save.js';
 import { QUALITY } from './quality.js';
+import { Net } from './net.js';
 
 async function boot() {
   const bootEl = document.getElementById('boot');
+  // no internet, no game: the "Internet is off" screen covers everything until the phone is online
+  Net.start();
+  const online = Net.waitOnline();
   // the world decides the theme, critters and prices; switching worlds reloads the page
   const world = setWorld(loadState().world);
   let travelled = false, resumed = false;
@@ -39,10 +43,16 @@ async function boot() {
     ]);
   } catch { /* fall back to system font */ }
   await models;
+  await online; // so consent and the first ads load over a working connection
 
   const ui = new UI();
   const canvas = document.getElementById('c');
   const game = new Game(canvas, ui);
+  // losing the connection mid-game freezes it behind the block screen; coming back online reloads ads
+  Net.onChange = (on) => {
+    game.setPause('net', !on);
+    if (on) Ads.reconnect();
+  };
   // If the phone takes the graphics context away (low GPU memory, driver reset), the canvas would stay
   // black or frozen: save and reload instead, which brings the player straight back into the game.
   canvas.addEventListener('webglcontextlost', (e) => {
@@ -99,6 +109,7 @@ async function boot() {
     if (!awayAt || Ads.showing) return;
     const since = awayAt;
     awayAt = 0;
+    Net.verify(); // Wi-Fi or data may have been switched off meanwhile
     if (!game.started) { game.setPause('away', false); return; } // still on the title screen
     ui.showPause(() => {
       game.setPause('menu', false); // the pause menu may have been open when the player left
@@ -113,8 +124,9 @@ async function boot() {
     App.addListener('resume', comeBack);
     // back button: close a popup, otherwise open the pause menu (Continue / Exit game)
     App.addListener('backButton', () => {
-      if (ui.pauseShown) ui.resumeFromPause();
-      else if (document.querySelector('.modal-wrap')) ui.closeModal();
+      if (Net.blocked) App.minimizeApp();
+      else if (ui.pauseShown) ui.resumeFromPause();
+      else if (document.querySelector('.modal-wrap')) ui.back();
       else if (!game.started) App.minimizeApp();
       else {
         game.setPause('menu', true);

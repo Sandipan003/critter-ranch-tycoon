@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { buildCritter, SPECIES, disposeBaked } from '../world/models.js';
 import { WORLD } from '../world/worlds.js';
-import { levelLabelTexture, bossLabelTexture } from '../world/textures.js';
+import { levelLabelTexture, bossLabelTexture, bubbleTexture } from '../world/textures.js';
 import { BAL } from '../config.js';
 import { MODEL_MAT } from '../world/assets.js';
 
@@ -24,14 +24,16 @@ const LEVEL_BAND = [null, [-14.5, -22], [-16, -27], [-20, -34], [-26, -42], [-32
 const LEVEL_HALF_WIDTH = [0, 11, 13, 16, 19, 22];
 
 export class WildCritter {
-  // `boss: hp` makes a boss: roams like a Lv.3 critter but is huge, worth a lot and takes `hp` hits
-  constructor(scene, species, level, pos, shiny = false, { boss = 0 } = {}) {
+  // `boss: hp` makes a boss: roams like a Lv.3 critter but is huge, worth a lot and takes `hp` hits.
+  // `hurt` (once the Doctor Deck is built): wears a 🩹, is a little easier to catch and can be healed
+  constructor(scene, species, level, pos, shiny = false, { boss = 0, hurt = false } = {}) {
     this.shiny = shiny;
+    this.hurt = hurt;
     this.species = species;
     this.level = level; // 1–5 within the world; shown as level + WORLD.levelOffset
     this.displayLevel = (boss ? 5 : level) + WORLD.levelOffset;
     this.value = Math.round(BAL.levelValue[boss ? 5 : level] * SPECIES[species].mult * WORLD.valueMul * (shiny ? 5 : 1) * (boss ? 6 : 1));
-    this.catchMul = shiny ? 0.7 : 1;
+    this.catchMul = shiny ? 0.7 : hurt ? 1.15 : 1;
     this.scale = LEVEL_SCALE[level] * (boss ? BOSS_SCALE : 1);
     this.boss = !!boss;
     this.maxHp = this.hp = boss;
@@ -62,6 +64,14 @@ export class WildCritter {
     label.renderOrder = 5;
     this.mesh.add(label);
     this.label = label;
+    if (hurt) {
+      const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture('🩹', '#ff6b8a'), transparent: true, depthWrite: false }));
+      b.scale.set(0.75 / this.scale, 0.88 / this.scale, 1);
+      b.position.y = label.position.y + (0.75 + level * 0.12) / this.scale;
+      b.renderOrder = 5;
+      this.mesh.add(b);
+      this.bandage = b;
+    }
 
     this.state = 'spawn';
     this.timer = 0;
@@ -170,6 +180,7 @@ export class WildCritter {
     scene.remove(this.mesh);
     if (this.boss) this.label.material.map.dispose();
     this.label.material.dispose();
+    this.bandage?.material.dispose(); // its texture is shared (bubble cache)
     disposeBaked(this.mesh);
   }
 }
@@ -211,7 +222,8 @@ export class CritterSpawner {
       0,
       band[1] + Math.random() * (band[0] - band[1]),
     );
-    const c = new WildCritter(this.game.scene, species, level, pos, shiny);
+    const hurt = !shiny && !!this.game.clinic && Math.random() < BAL.hurtChance;
+    const c = new WildCritter(this.game.scene, species, level, pos, shiny, { hurt });
     const now = performance.now();
     if (shiny && !initial && now - (this.lastShinyToast || 0) > 30000) {
       this.lastShinyToast = now;

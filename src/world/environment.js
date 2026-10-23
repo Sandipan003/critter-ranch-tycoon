@@ -85,7 +85,8 @@ export function addRail(scene, len, x, z, rotY) {
   return m;
 }
 
-// `opened`: bought pastures (gaps in the south fence) and balconies (gaps in the north fence)
+// `opened`: bought pastures (gaps in the south fence), balconies (gaps in the north fence) and the
+// Doctor Deck (a gap in the East Pasture's south fence)
 export function buildPalisade(scene, opened = []) {
   const D = L.deck, B = L.balcony;
   const openYards = opened.filter((id) => L.yards[id]);
@@ -102,18 +103,28 @@ export function buildPalisade(scene, opened = []) {
     ...south(L.machineA[0] + 1.1, L.machineB[0] - 1.1, 6),
     ...south(L.machineB[0] + 1.1, D.x1, 7),
   ];
+  const clinic = opened.includes('clinic');
   openYards.forEach((id, k) => {
     const Y = L.yards[id].deck;
     const seed = 20 + k * 5;
     // the stretch of the yard's north edge that isn't the main deck's south fence
     const north = Y.x0 < D.x0 ? [Y.x0, D.x0] : [D.x1, Y.x1];
+    const southGap = id === 'yardE' && clinic ? [L.clinic.gap] : [];
     stakes.push(
       ...stakeLine([[north[0], Y.z0], [north[1], Y.z0]], 0.36, seed),
       ...stakeLine([[Y.x0, Y.z0], [Y.x0, Y.z1]], 0.36, seed + 1),
       ...stakeLine([[Y.x1, Y.z0], [Y.x1, Y.z1]], 0.36, seed + 2),
-      ...stakeLine([[Y.x0, Y.z1], [Y.x1, Y.z1]], 0.36, seed + 3),
+      ...cutGaps(Y.x0, Y.x1, southGap).flatMap(([a, b], i) => stakeLine([[a, Y.z1], [b, Y.z1]], 0.36, seed + 3 + i * 50)),
     );
   });
+  if (clinic) {
+    const C = L.clinic.deck;
+    stakes.push(
+      ...stakeLine([[C.x0, C.z0], [C.x0, C.z1]], 0.36, 40),
+      ...stakeLine([[C.x1, C.z0], [C.x1, C.z1]], 0.36, 41),
+      ...stakeLine([[C.x0, C.z1], [C.x1, C.z1]], 0.36, 42),
+    );
+  }
   const mesh = instanced(stakeGeometry(), stakes);
   scene.add(mesh);
   return mesh;

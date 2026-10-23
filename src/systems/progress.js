@@ -13,6 +13,9 @@ const MISSIONS = {
   upgrade: { w: 1, icon: '⬆️', text: (n) => `Buy ${n} upgrade${n > 1 ? 's' : ''}`, target: (q) => 2 + Math.floor(q / 8), needs: 'upgrades' },
   golden: { w: 1, icon: '✨', text: (n) => `Catch ${n} golden critter${n > 1 ? 's' : ''}`, target: (q) => 1 + Math.floor(q / 15), mul: 2, minQ: 1 },
   boss: { w: 1, icon: '👑', text: (n) => `Catch ${n} boss critter${n > 1 ? 's' : ''}`, target: (q) => 1 + Math.floor(q / 20), mul: 3, minQ: 3 },
+  heal: { w: 2, icon: '🩺', text: (n) => `Heal ${n} hurt critters`, target: (q) => 4 + Math.floor(q / 2), needs: 'clinic' },
+  snack: { w: 1, icon: '🍦', text: (n) => `Sell ${n} snacks`, target: (q) => 15 + q * 2, needs: 'snack' },
+  vip: { w: 1, icon: '🚚', text: () => 'Fill a VIP truck order', target: () => 1, mul: 2, needs: 'helper1', minQ: 2 },
 };
 // day 1…7 of the login streak, as multiples of the base reward
 export const DAILY = [1, 1.5, 2, 3, 4, 6, 12];

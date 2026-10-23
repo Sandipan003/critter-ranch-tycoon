@@ -47,4 +47,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- lets the WebView report going offline / online (navigator.onLine), for the "Internet is off" screen -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 </manifest>

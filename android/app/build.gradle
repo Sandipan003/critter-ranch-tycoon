@@ -12,8 +12,8 @@ android {
         applicationId "com.critterranch.tycoon"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 9      // bump by 1 for every Play Store upload
-        versionName "1.0.8"
+        versionCode 10     // bump by 1 for every Play Store upload
+        versionName "1.0.9"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

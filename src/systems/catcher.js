@@ -42,7 +42,7 @@ export class Catcher {
     }
     this.inFlight++;
     const tier = Math.min(critter.level, CAPSULE_TIERS.length - 1);
-    const cap = buildCapsule(tier);
+    const cap = buildCapsule(critter.hurt ? 'hurt' : tier);
     const from = this.owner.handWorld(new THREE.Vector3());
     const dist = from.distanceTo(critter.pos);
     if (this.owner.onThrow) this.owner.onThrow(critter);
@@ -157,7 +157,7 @@ export class Catcher {
       });
       return;
     }
-    const item = { mesh: cap, tier: cap.userData.tier = Math.min(critter.level, 5), value: critter.value, species: critter.species, level: critter.displayLevel, shiny: critter.shiny, boss: critter.boss };
+    const item = { mesh: cap, tier: cap.userData.tier = Math.min(critter.level, 5), value: critter.value, species: critter.species, level: critter.displayLevel, shiny: critter.shiny, boss: critter.boss, hurt: critter.hurt };
     g.flyers.fly(cap, cap.position.clone(), (v) => owner.stack.slotWorld(owner.stack.count, v), {
       dur: 0.5,
       height: 2,
@@ -167,6 +167,10 @@ export class Catcher {
         this.inFlight--;
         owner.stack.push(item);
         g.onCapture(owner, item);
+        if (item.hurt && owner === g.player) {
+          g.floatText.spawn(owner.pos.clone().setY(3.4), '🩹 Hurt!', '#ff8fa8', 1.1);
+          g.tip('hurt', '🩹 A hurt critter (white capsule)! Bring it to the 🏥 Doctor Deck: healed critters sell for x3.');
+        }
       },
     });
   }

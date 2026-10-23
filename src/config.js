@@ -46,6 +46,23 @@ export const BAL = {
   rewardCooldownSec: 90,
   incomeBoostSec: 120,
   goldenThrowSec: 45,
+  // Doctor Deck: once built, this share of wild critters is hurt; healed ones pay healMul x their price
+  hurtChance: 0.22,
+  healMul: 3,
+  healSec: 4.5, // per patient and bed (Doctor Skill shortens it)
+  clinicWaiting: 12, // patients waiting for a bed
+  // Snack stand: one ice cream every snackSec to a customer in the queue, worth snackValue (x world)
+  snackSec: 3,
+  snackValue: 3,
+  snackRushSec: 120, // ▶ Snack Rush: x3 snack sales
+  // VIP truck: an order every few minutes once the first helper is hired; pays vipMul x the price
+  vipFirstSec: 75,
+  vipGapSec: [200, 280],
+  vipSec: 180,
+  vipMul: 4,
+  // Lucky Wheel: a free spin every few hours, more for a video (a few a day)
+  wheelFreeHours: 4,
+  wheelAdSpins: 8,
 };
 
 // Per-world upgrades (each world starts at Lv.1). Prices grow by `mul` per level and are multiplied
@@ -59,4 +76,6 @@ export const UPGRADES = [
   { id: 'value', name: 'Better Prices', icon: '💰', desc: '+15% sale value', base: 40, mul: 1.6, max: Infinity },
   { id: 'pens', name: 'Pen Feeding', icon: '🍖', desc: '+25% coins from every pen', base: 120, mul: 1.55, max: Infinity, requires: 'penW' },
   { id: 'helpers', name: 'Helper Training', icon: '🧑‍🌾', desc: 'Helpers walk, throw and carry more', base: 200, mul: 1.6, max: 15, requires: 'helper1' },
+  { id: 'snack', name: 'Snack Menu', icon: '🍦', desc: '+30% snack stand sales', base: 300, mul: 1.55, max: Infinity, requires: 'snack' },
+  { id: 'clinic', name: 'Doctor Skill', icon: '🩺', desc: 'The doctor heals 12% faster', base: 1500, mul: 1.6, max: 12, requires: 'clinic' },
 ];

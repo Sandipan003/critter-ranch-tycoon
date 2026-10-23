@@ -35,6 +35,16 @@ export const L = {
     balE: { deck: { x0: 6, x1: 13.2, z0: -11.6, z1: -8 }, gap: [6.6, 9.6], pad: [9.9, -10.2] },
     balW: { deck: { x0: -13.2, x1: -6, z0: -11.6, z1: -8 }, gap: [-9.6, -6.6], pad: [-9.9, -10.2] },
   },
+  // Doctor Deck: south of the East Pasture deck, entered through `gap` in its south fence. Hurt critters
+  // are dropped on `pad`; the doctor treats them on the `beds` beside the clinic `house`.
+  clinic: {
+    deck: { x0: 3.6, x1: 10.4, z0: 10.6, z1: 16.4 }, gap: [4.0, 6.8], walkX1: 6.9, // beds + clinic east of walkX1
+    pad: [5.3, 12.2], coin: [5.3, 15.0], house: [9.3, 13.5], beds: [[7.6, 11.9], [7.6, 13.5], [7.6, 15.1]],
+  },
+  // Beside the customers' queues, south of the belt: the snack stand (its sales ride the belt from
+  // `beltX`) and the parking spot of the VIP truck (it takes wanted critters off the belt at `beltX`)
+  snack: { pos: [1.9, 14.1], beltX: -0.1 },
+  vip: { park: [-5.3, 15.0], beltX: -3.7 },
   wild: { x0: -26, x1: 26, z0: -50, z1: -15 },
   props: {
     barrels: [[9.1, 5.1]], // the other corners are gateways to the pastures and balconies
@@ -47,11 +57,14 @@ export const UNLOCKS = [
   { id: 'penW', label: 'Bloop Pen', icon: '🐧', cost: 60, tile: [-8.4, -1.3], requires: 'upgrades' },
   { id: 'helper1', label: 'Helper', icon: '🧑‍🌾', cost: 150, tile: [3.7, -10.3], requires: 'penW' },
   { id: 'express', label: 'Express Belt', icon: '⚡', cost: 260, tile: [-2.0, 3.6], requires: 'helper1' },
-  { id: 'penE', label: 'Ember Pen', icon: '🔥', cost: 420, tile: [8.4, -1.3], requires: 'express' },
+  { id: 'snack', label: 'Snack Stand', icon: '🍦', cost: 340, tile: [-2.0, 3.6], requires: 'express' },
+  { id: 'penE', label: 'Ember Pen', icon: '🔥', cost: 420, tile: [8.4, -1.3], requires: 'snack' },
   { id: 'grove', label: 'Wild Grove', icon: '🌲', cost: 750, tile: [0, -5.4], requires: 'penE' },
   { id: 'helper2', label: 'Helper', icon: '🧑‍🌾', cost: 1100, tile: [-3.7, -10.3], requires: 'grove' },
   { id: 'yardE', label: 'East Pasture', icon: '🏡', cost: 1600, tile: [4.6, 0.5], requires: 'helper2' },
-  { id: 'balE', label: 'East Balcony', icon: '🪵', cost: 2100, tile: [8.0, -6.6], requires: 'yardE' },
+  // on the East Pasture deck, so no preview before that deck exists
+  { id: 'clinic', label: 'Doctor Deck', icon: '🏥', cost: 1900, tile: [5.4, 8.6], requires: 'yardE', preview: false },
+  { id: 'balE', label: 'East Balcony', icon: '🪵', cost: 2100, tile: [8.0, -6.6], requires: 'clinic' },
   { id: 'helper3', label: 'Helper', icon: '🧑‍🌾', cost: 2700, tile: [9.9, -10.2], requires: 'balE', preview: false },
   { id: 'yardW', label: 'West Pasture', icon: '🏡', cost: 3400, tile: [-4.8, -3.2], requires: 'helper3' },
   { id: 'balW', label: 'West Balcony', icon: '🪵', cost: 4200, tile: [-8.0, -6.6], requires: 'yardW' },

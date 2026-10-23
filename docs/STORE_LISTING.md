@@ -34,11 +34,20 @@ Finish your ranch in the Sunny Meadow, then travel to the snowy Frosty Peaks, th
 ⬆️ UPGRADE EVERYTHING
 Bigger backpack, faster throws, stronger capsules, quicker running, better prices, well-fed pens and trained helpers. Some upgrades never max out, so there is always something to spend your coins on.
 
+🏥 DOCTOR DECK
+Some wild critters are hurt! Bring them to your clinic, where the doctor nurses them back to health on cosy beds. Healed critters are worth triple coins.
+
+🍦 SNACK STAND & 🚚 VIP TRUCKS
+Your snack stand sells ice cream to the customers waiting in line. Every few minutes a VIP truck pulls up with a special order: fill it in time for a giant payday!
+
+🎡 LUCKY WHEEL
+Spin the Lucky Wheel for free coins, boosts and the golden jackpot.
+
 👑 BOSSES, EVENTS & MISSIONS
 Giant boss critters storm the field: hit them with capsules before they escape for a huge reward! Surprise events like Critter Stampede, Golden Hour and Rush Hour keep every session fresh. Complete missions, collect your daily reward streak, and fill your Critterdex to boost your coins forever.
 
 😴 EARN WHILE YOU'RE AWAY
-Your pens and helpers keep working while you're offline, so there are coins waiting when you come back.
+Your pens, helpers and snack stand keep working while you're away, so there are coins waiting when you come back.
 
 ✨ FEATURES
 • Simple one-thumb controls: just move, and catching happens automatically
@@ -50,12 +59,12 @@ Your pens and helpers keep working while you're offline, so there are coins wait
 • Daily rewards, missions, boss fights and surprise events
 • Optional bonus rewards: watch a short ad for extra coins, double income or a guaranteed catch
 
-Critter Ranch Tycoon is free to play and contains ads. Watching ads is always optional.
+Critter Ranch Tycoon is free to play and contains ads. Watching ads is always optional. An internet connection is required.
 ```
 
 ## Categorisation
 - **App category:** Game → **Casual**
-- **Tags (pick up to 5):** Idle, Casual, Simulation, Arcade, Offline
+- **Tags (pick up to 5):** Idle, Casual, Simulation, Arcade (not "Offline": since v1.0.9 the game needs the internet)
 
 ## Contact details
 - **Email:** sarkarsandipan423@gmail.com

@@ -136,6 +136,9 @@ export class SellBelt {
     this.setPickupCount(1);
     this.customers = [];
     this.spawnTimer = 0;
+    // a parked VIP truck takes the critters it wants off the belt before the shoppers:
+    // { s, wants(item) (reserves it), take(item) }
+    this.vip = null;
   }
 
   sAtX(x) {
@@ -170,6 +173,17 @@ export class SellBelt {
 
   addCapsule(item) {
     this.pending.push(item);
+  }
+
+  // Coins put on the bottom straight at `x` (snack stand sales) ride to the coin pad like a customer's
+  addCoinsAt(x, value, n = 2) {
+    const s = this.sAtX(x);
+    const mesh = buildCoinStack(n);
+    mesh.position.copy(this.path.getPointAt(s / this.length));
+    this.game.scene.add(mesh);
+    let idx = this.items.findIndex((it) => it.s < s);
+    if (idx < 0) idx = this.items.length;
+    this.items.splice(idx, 0, { kind: 'coins', mesh, s, value });
   }
 
   // Customers -----------------------------------------------------------
@@ -257,11 +271,16 @@ export class SellBelt {
 
     const lastPickup = this.pickups[this.pickups.length - 1];
     const spawned = [];
+    const vip = this.vip;
     let limit = Infinity;
     for (let i = 0; i < this.items.length; i++) {
       const it = this.items[i];
       let next = Math.min(it.s + this.speed * dt, limit - SPACING);
-      if (it.kind === 'capsule') {
+      if (it.kind === 'capsule' && vip && !it.toVip && it.s <= vip.s + 0.01 && next >= vip.s && vip.wants(it)) {
+        it.toVip = true;
+        next = vip.s;
+      }
+      if (it.kind === 'capsule' && !it.toVip) {
         for (const p of this.pickups) {
           if (it.s <= p.s + 0.01 && next >= p.s) {
             const front = p.queue[0];
@@ -288,7 +307,11 @@ export class SellBelt {
     // resolve served capsules + arrivals at machine B
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
-      if (it.served) {
+      if (it.toVip) {
+        this.items.splice(i, 1);
+        it.toVip = false;
+        vip.take(it);
+      } else if (it.served) {
         const p = it.served;
         this.items.splice(i, 1);
         spawned.push(this.serve(p, it));

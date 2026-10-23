@@ -1,6 +1,6 @@
 const KEY = 'critter_ranch_save_v1';
 
-export const freshUpgrades = () => ({ capacity: 0, throw: 0, power: 0, speed: 0, value: 0, pens: 0, helpers: 0 });
+export const freshUpgrades = () => ({ capacity: 0, throw: 0, power: 0, speed: 0, value: 0, pens: 0, helpers: 0, snack: 0, clinic: 0 });
 
 export function defaultState() {
   return {
@@ -16,7 +16,8 @@ export function defaultState() {
     paid: {}, // partial payments on unlock tiles
     upgrades: freshUpgrades(),
     adCooldowns: {},
-    stats: { caught: 0, sold: 0, earned: 0, unlocks: 0 },
+    stats: { caught: 0, sold: 0, earned: 0, unlocks: 0, healed: 0, vip: 0 },
+    wheel: { next: 0, day: '', ads: 0 }, // next free spin (ms), video spins used on `day`
     settings: { sound: true, haptics: true, quality: 'auto' }, // quality: auto | high | low
     profile: { name: 'Rancher', avatar: '👩‍🦰' },
     lastSeen: Date.now(),
@@ -30,7 +31,10 @@ export function loadState() {
     if (!raw) return defaultState();
     const d = defaultState();
     const s = JSON.parse(raw);
-    return { ...d, ...s, upgrades: { ...d.upgrades, ...s.upgrades }, stats: { ...d.stats, ...s.stats }, settings: { ...d.settings, ...s.settings }, profile: { ...d.profile, ...s.profile } };
+    return {
+      ...d, ...s, upgrades: { ...d.upgrades, ...s.upgrades }, stats: { ...d.stats, ...s.stats }, settings: { ...d.settings, ...s.settings },
+      profile: { ...d.profile, ...s.profile }, wheel: { ...d.wheel, ...s.wheel },
+    };
   } catch {
     return defaultState();
   }

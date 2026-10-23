@@ -15,6 +15,10 @@ import { Player } from './systems/player.js';
 import { Progress } from './systems/progress.js';
 import { FieldEvents } from './systems/events.js';
 import { Tutorial } from './systems/tutorial.js';
+import { Clinic } from './systems/clinic.js';
+import { SnackStand } from './systems/snack.js';
+import { VipTruck } from './systems/vip.js';
+import { Wheel } from './systems/wheel.js';
 import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { Ads } from './ads.js';
@@ -27,10 +31,12 @@ export class Game {
     this.canvas = canvas;
     this.ui = ui;
     this.state = loadState();
-    this.boosts = { income: 0, golden: 0 };
+    this.boosts = { income: 0, golden: 0, snack: 0 };
     this.audio = new Audio();
     this.audio.enabled = this.state.settings.sound;
-    this.pauses = new Set(); // why the game is paused: 'away' (app in background), 'menu', 'ad'
+    // why the game is paused: 'away' (app in background), 'menu', 'ad', 'popup' (a reward to claim),
+    // 'net' (no internet)
+    this.pauses = new Set();
     this.started = false;
 
     // Graphics: Low (Settings, or Auto on a weak phone / after slow frames, see quality.js) drops
@@ -88,6 +94,9 @@ export class Game {
     this.tiles = {};
     this.upgradePad = null;
     this.onUpgradePad = false;
+    this.clinic = null; // Doctor Deck, once bought
+    this.onClinic = false;
+    this.snack = null; // Snack Stand, once bought
     // this world's unlock chain (prices scaled, finale last)
     this.unlocks = worldUnlocks((sp) => [SPECIES[sp].emoji, `${SPECIES[sp].name} Pen`]);
     this.portal = null; // world-map pad, once this world's travel tile is bought
@@ -108,6 +117,8 @@ export class Game {
     // missions, daily reward, Critterdex (its bonus feeds into prices) and random field events
     this.progress = new Progress(this);
     this.events = new FieldEvents(this);
+    this.vip = new VipTruck(this);
+    this.wheel = new Wheel(this);
     this.clock = {
       last: performance.now(),
       getDelta() { const n = performance.now(), d = (n - this.last) / 1000; this.last = n; return d; },
@@ -164,8 +175,22 @@ export class Game {
 
   rebuildPalisade() {
     if (this.palisade) this.scene.remove(this.palisade);
-    const opened = [...Object.keys(L.yards), ...Object.keys(L.balconies)].filter((id) => this.isUnlocked(id));
+    const opened = [...Object.keys(L.yards), ...Object.keys(L.balconies), 'clinic'].filter((id) => this.isUnlocked(id));
     this.palisade = buildPalisade(this.scene, opened);
+  }
+
+  // The Doctor Deck: a deck south of the East Pasture, through a gap in its fence, with the clinic
+  buildClinic(animate) {
+    const C = L.clinic, D = C.deck, Y = L.yards.yardE.deck;
+    const deck = deckBox(D.x0, D.x1, D.z0, D.z1, DECK_Y, this.env.plank);
+    this.scene.add(deck);
+    this.player.addWalk({ x0: D.x0 + 0.5, x1: C.walkX1, z0: D.z0 + 0.5, z1: D.z1 - 0.5 });
+    this.player.addWalk({ x0: C.gap[0] + 0.45, x1: C.gap[1] - 0.45, z0: Y.z1 - 1.2, z1: D.z0 + 0.9 });
+    this.clinic = new Clinic(this, animate);
+    if (animate) {
+      this.rebuildPalisade();
+      this.pops.pop(deck, 0.5, 1);
+    }
   }
 
   // A balcony extension beside the original balcony, reached through a gap in the deck's north fence
@@ -306,6 +331,12 @@ export class Game {
       case 'grove':
         if (animate) for (let i = 0; i < 6; i++) this.critters.spawn();
         break;
+      case 'snack':
+        this.snack = new SnackStand(this, animate);
+        break;
+      case 'clinic':
+        this.buildClinic(animate);
+        break;
       case 'yardE':
       case 'yardW':
         this.buildYard(id, animate);
@@ -349,9 +380,9 @@ export class Game {
     const s = this.state;
     const dest = worldById(id);
     if (!dest || id === s.world || id > s.maxWorld) return;
-    // coins still lying on pads come along
-    const pads = [this.coinPad, ...Object.values(this.pens).map((p) => p.coinPad)];
-    const loose = pads.reduce((a, p) => a + p.value, 0);
+    // coins still lying on pads come along, and the clinic's patients pay their normal price
+    const pads = [this.coinPad, ...Object.values(this.pens).map((p) => p.coinPad), ...(this.clinic ? [this.clinic.coinPad] : [])];
+    const loose = pads.reduce((a, p) => a + p.value, 0) + (this.clinic?.pendingValue() || 0);
     if (loose > 0) this.earn(loose);
     // each world is its own run: coins, unlocks and upgrades stay behind and wait for you
     s.worlds[s.world] = { coins: s.coins, unlocked: s.unlocked, paid: s.paid, upgrades: s.upgrades };
@@ -398,6 +429,8 @@ export class Game {
       helper1: '🧑‍🌾 Your helper catches critters and sells them for you. Hire more to earn while you relax!',
       yardE: '🏡 Pastures make your ranch bigger: walk through the gap in the fence to reach the new pen.',
       balE: '🪵 A balcony wing: room for one more helper. Walk through the gap in the north fence.',
+      snack: '🍦 Customers waiting in line now buy ice cream: the coins ride the belt to your 💰 pad.',
+      clinic: '🏥 Some wild critters are hurt now 🩹. Bring them (white capsules) to the 🩺 pad: healed critters pay x3!',
     };
     if (tips[id]) this.tip(id, tips[id]);
     this.save();
@@ -469,7 +502,19 @@ export class Game {
       this.coinBurstToHud(this.progress.claim(extra, 2));
     } else if (kind === 'daily') {
       this.coinBurstToHud(this.progress.claimDaily(2));
+    } else if (kind === 'heal') {
+      const n = this.clinic ? this.clinic.healAll() : 0;
+      this.ui.toast(`🩺 ${n} critter${n === 1 ? '' : 's'} healed: collect the coins at the clinic!`);
+      this.setCooldown('heal', 60);
+    } else if (kind === 'snack') {
+      this.boosts.snack = BAL.snackRushSec;
+      this.setCooldown('snack', BAL.snackRushSec + 60);
+      this.ui.toast('🍦 Snack Rush: x3 snack sales for 2 minutes!');
+    } else if (kind === 'vip') {
+      this.earn(extra);
+      this.coinBurstToHud(extra);
     }
+    // 'wheel': the spin itself is the reward (ui.js)
     this.audio.unlockFx();
     this.save();
     return true;
@@ -485,6 +530,7 @@ export class Game {
     let r = 0;
     for (const pen of Object.values(this.pens)) r += (pen.def.rate * this.penMul()) / 5;
     r += this.helpers.length * 1.2 * WORLD.valueMul;
+    if (this.snack) r += (BAL.snackValue * WORLD.valueMul * (1 + (this.state.upgrades.snack || 0) * 0.3)) / BAL.snackSec;
     return r * (1 + this.state.upgrades.value * 0.15) * (1 + this.progress.dexBonus) * (this.state.crown ? 2 : 1);
   }
 
@@ -503,6 +549,7 @@ export class Game {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.dirty = true; // resizing clears the canvas: a paused game draws one still frame again
   }
 
   cameraRig(dt, snap = false) {
@@ -537,7 +584,10 @@ export class Game {
     if (this.tutorial.active) target = this.tutorial.update(dt);
     else {
       const affordable = this.openTiles().filter((t) => g.coins >= t.remaining).sort((a, b) => a.remaining - b.remaining)[0];
-      if (p.stack.count > 0 && (p.stack.full || !p.capturing)) target = this.dropZone.pos;
+      // hurt critters go to the doctor first (unless the waiting line is full)
+      const hurt = this.clinic && !this.clinic.full && p.stack.items.some((it) => it.hurt);
+      if (hurt && (p.stack.full || !p.capturing)) target = this.clinic.pad.pos;
+      else if (p.stack.count > 0 && (p.stack.full || !p.capturing)) target = this.dropZone.pos;
       else if (this.coinPad.value >= 6 && p.stack.count === 0) target = this.coinPad.pos;
       else if (affordable) target = affordable.def.tile;
       else if (p.stack.count === 0 && !p.capturing) target = this.capturePad.pos;
@@ -573,8 +623,8 @@ export class Game {
         this.dropToBelt(p);
       }
     }
-    // coin pads (main + pens)
-    const pads = [this.coinPad, ...Object.values(this.pens).map((x) => x.coinPad)];
+    // coin pads (main + pens + clinic)
+    const pads = [this.coinPad, ...Object.values(this.pens).map((x) => x.coinPad), ...(this.clinic ? [this.clinic.coinPad] : [])];
     for (const pad of pads) {
       if (pad.contains(p.pos) && pad.value > 0) {
         const amt = pad.collect((v) => v.copy(p.pos).setY(1.4));
@@ -601,16 +651,25 @@ export class Game {
       if (on && !this.onPortal && p.speed < 6) this.ui.openWorldMap();
       this.onPortal = on;
     }
+    // clinic panel while standing on its 🩺 pad
+    if (this.clinic) {
+      const on = this.clinic.pad.contains(p.pos);
+      if (on && !this.onClinic) this.ui.openClinic();
+      if (!on && this.onClinic) this.ui.closeClinic();
+      this.onClinic = on;
+    }
   }
 
   update(dt) {
-    this.boosts.income = Math.max(0, this.boosts.income - dt);
-    this.boosts.golden = Math.max(0, this.boosts.golden - dt);
+    for (const k of Object.keys(this.boosts)) this.boosts[k] = Math.max(0, this.boosts[k] - dt);
     const input = this.input.read();
     this.player.update(dt, input);
     this.events.update(dt);
     this.critters.update(dt);
     this.belt.update(dt);
+    this.snack?.update(dt);
+    this.clinic?.update(dt);
+    this.vip.update(dt);
     for (const h of this.helpers) h.update(dt);
     const actors = [this.player, ...this.helpers];
     for (const pen of Object.values(this.pens)) pen.update(dt, actors);
@@ -675,6 +734,7 @@ export class Game {
     else this.pauses.delete(reason);
     if (was === this.paused) return;
     this.input.reset();
+    this.dirty = true;
     if (this.paused) this.audio.suspend();
     else {
       this.audio.resume();
@@ -689,7 +749,16 @@ export class Game {
       if (now - this.lastFrame < 1000 / this.fpsCap - 3) return; // frame-rate cap
       this.lastFrame = now;
       const dt = Math.min(0.05, this.clock.getDelta());
-      if (this.paused || this.contextLost) return;
+      if (this.contextLost) return;
+      // paused (a popup, the pause menu, no internet): nothing moves, but the ranch stays visible
+      // behind it, so redraw the still scene whenever the canvas was cleared (e.g. the banner resized it)
+      if (this.paused) {
+        if (this.dirty) {
+          this.dirty = false;
+          try { this.renderer.render(this.scene, this.camera); } catch { /* next frame */ }
+        }
+        return;
+      }
       // an error in one frame is logged and skipped instead of freezing the game
       try {
         if (this.started) this.update(dt);

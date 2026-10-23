@@ -87,23 +87,42 @@ export const Ads = {
   },
 
   async loadRewarded() {
-    if (!native || !this.ready) return;
+    if (!native || !this.ready || this.rewardedLoading) return;
+    this.rewardedLoading = true;
     try {
       await AdMob.prepareRewardVideoAd({ adId: ids.rewarded, isTesting: ADS.testMode });
       this.rewardedLoaded = true;
     } catch {
       this.rewardedLoaded = false;
+    } finally {
+      this.rewardedLoading = false;
     }
   },
 
   async loadInterstitial() {
-    if (!native || !this.ready) return;
+    if (!native || !this.ready || this.interstitialLoading) return;
+    this.interstitialLoading = true;
     try {
       await AdMob.prepareInterstitial({ adId: ids.interstitial, isTesting: ADS.testMode });
       this.interstitialLoaded = true;
     } catch {
       this.interstitialLoaded = false;
       setTimeout(() => this.loadInterstitial(), 45000);
+    } finally {
+      this.interstitialLoading = false;
+    }
+  },
+
+  // Back online after the connection dropped: ask again right away for whatever failed to load
+  // meanwhile, instead of waiting for the retry timers
+  reconnect() {
+    if (!native || !this.ready) return;
+    if (!this.rewardedLoaded) this.loadRewarded();
+    if (!this.interstitialLoaded) this.loadInterstitial();
+    if (this.wantBanner && !this.bannerOn) {
+      clearTimeout(this.bannerRetry);
+      this.bannerFails = 0;
+      this.showBanner();
     }
   },
 
@@ -186,6 +205,7 @@ export const Ads = {
   // Bottom banner (adaptive width). Safe to call repeatedly; waits for consent / SDK start-up.
   async showBanner() {
     if (!native || !ADS.bannerEnabled) return;
+    this.wantBanner = true;
     if (this.initPromise) await this.initPromise;
     if (!this.ready || this.bannerOn) return;
     if (!ADS.testMode && ADS.bannerId.includes('XXXX')) return; // no real banner unit configured yet

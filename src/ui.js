@@ -1,9 +1,10 @@
 import { formatNum } from './world/textures.js';
-import { UPGRADES, GAME_NAME, ADS } from './config.js';
+import { UPGRADES, GAME_NAME, ADS, BAL } from './config.js';
 import { Ads } from './ads.js';
 import { WORLD, worldsUpTo, levelRange, worldById } from './world/worlds.js';
 import { SPECIES } from './world/models.js';
 import { DAILY } from './systems/progress.js';
+import { PRIZES } from './systems/wheel.js';
 
 const $ = (s) => document.querySelector(s);
 
@@ -29,12 +30,15 @@ export class UI {
     press($('#btn-free'), () => game.rewardFor('free'));
     press($('#btn-income'), () => { if (game.boosts.income <= 0) game.rewardFor('income'); });
     press($('#btn-golden'), () => { if (game.boosts.golden <= 0) game.rewardFor('golden'); });
+    press($('#btn-snack'), () => { if (game.boosts.snack <= 0) game.rewardFor('snack'); });
+    press($('#btn-heal'), () => { if (game.clinic?.patients) game.rewardFor('heal'); });
     press($('#btn-settings'), () => this.openSettings());
     press($('#world-badge'), () => this.openWorldMap());
     press($('#profile'), () => this.openSettings());
     press($('#btn-missions'), () => this.openMissions());
     press($('#btn-daily'), () => this.openDaily());
     press($('#btn-dex'), () => this.openDex());
+    press($('#btn-wheel'), () => this.openWheel());
     $('#tip').addEventListener('click', (e) => { e.stopPropagation(); this.hideTip(); });
     this.setProfile(game.state.profile);
     $('#world-badge').textContent = `${WORLD.icon} ${WORLD.name}`;
@@ -220,7 +224,18 @@ export class UI {
     gold.classList.toggle('active', g.boosts.golden > 0);
     gold.classList.toggle('cool', g.boosts.golden <= 0 && gcd > 0);
     $('#golden-txt').textContent = g.boosts.golden > 0 ? fmtTime(g.boosts.golden) : gcd > 0 ? fmtTime(gcd) : '100% Catch';
+    // Snack Rush once the stand is built; Heal all while three or more critters wait at the clinic
+    const snack = $('#btn-snack'), heal = $('#btn-heal');
+    const scd = g.cooldownLeft('snack');
+    snack.style.display = avail && g.snack && (ready || scd > 0 || g.boosts.snack > 0) ? 'flex' : 'none';
+    snack.classList.toggle('active', g.boosts.snack > 0);
+    snack.classList.toggle('cool', g.boosts.snack <= 0 && scd > 0);
+    $('#snack-txt').textContent = g.boosts.snack > 0 ? fmtTime(g.boosts.snack) : scd > 0 ? fmtTime(scd) : 'x3 Snacks';
+    const sick = g.clinic ? g.clinic.patients : 0;
+    heal.style.display = avail && ready && sick >= 3 && g.cooldownLeft('heal') <= 0 ? 'flex' : 'none';
+    $('#heal-txt').textContent = `Heal ${sick}`;
     if (this.upgradesOpen) this.renderUpgrades();
+    if (this.clinicOpen) this.renderClinic();
     // missions / daily / Critterdex buttons appear once the first critter is sold
     $('#left-btns').classList.toggle('show', !!g.state.tutorialDone);
     const missionsReady = g.progress.ready();
@@ -228,6 +243,7 @@ export class UI {
     mb.textContent = missionsReady;
     mb.classList.toggle('show', missionsReady > 0);
     $('#daily-badge').classList.toggle('show', g.progress.daily().available);
+    $('#wheel-badge').classList.toggle('show', g.wheel.freeReady());
     const chip = g.events.chip();
     const ce = $('#event-chip');
     ce.classList.toggle('show', !!chip);
@@ -235,6 +251,13 @@ export class UI {
       if (ce.textContent !== chip.text) ce.textContent = chip.text;
       ce.classList.toggle('boss', chip.boss);
     }
+    // the VIP order sits under the event chip, or in its place
+    const vip = g.vip.chip();
+    const ve = $('#vip-chip');
+    ve.classList.toggle('show', !!vip);
+    ve.classList.toggle('solo', !chip);
+    ve.classList.toggle('hurry', g.vip.state === 'open' && g.vip.left < 30);
+    if (vip && ve.textContent !== vip) ve.textContent = vip;
   }
 
   // ── modals ───────────────────────────────────────────────
@@ -255,7 +278,19 @@ export class UI {
   clearModal() {
     $('#modal-root').innerHTML = '';
     this.upgradesOpen = false;
-    if (this.game) this.game.input.enabled = true;
+    this.clinicOpen = false;
+    this.backAction = null;
+    if (this.game) {
+      this.game.input.enabled = true;
+      this.game.setPause('popup', false);
+    }
+  }
+
+  // Android back button on a popup: its default answer (collect a reward), otherwise just close it
+  back() {
+    const f = this.backAction;
+    if (f) f();
+    else this.closeModal();
   }
 
   closeModal() {
@@ -323,7 +358,7 @@ export class UI {
       ${Ads.privacyRequired ? '<button class="btn wide" id="set-privacy">🔒 Privacy options</button>' : ''}
       <div class="stats">Caught: ${formatNum(g.state.stats.caught)} · Sold: ${formatNum(g.state.stats.sold)} · Earned: ${formatNum(g.state.stats.earned)}</div>
       <button class="btn wide danger" id="set-reset">Reset progress</button>
-      <div class="ver">${GAME_NAME} v1.0.8${ADS.testMode ? ' · test ads' : ''}</div>
+      <div class="ver">${GAME_NAME} v1.0.9${ADS.testMode ? ' · test ads' : ''}</div>
       <div class="ver">Ads: video ${Ads.rewardedLoaded ? 'ready' : 'loading'} · banner ${Ads.bannerStatus}</div>`, 'settings');
     w.querySelector('.x').onclick = () => this.closeModal();
     w.querySelector('#set-sound').onchange = (e) => { g.state.settings.sound = e.target.checked; g.audio.enabled = e.target.checked; g.save(); };
@@ -378,11 +413,118 @@ export class UI {
       <div class="off-amt"><span class="coin-ico"></span>${formatNum(amount)}</div>
       <button class="btn wide ad big" id="off-ad">▶ Collect x3 <span class="coin-ico sm"></span>${formatNum(amount * 3)}</button>
       <button class="btn wide plain" id="off-take">Collect</button>`, 'offline');
-    w.querySelector('#off-take').onclick = () => { g.earn(amount); g.coinBurstToHud(amount); this.closeModal(); };
+    // the ranch stands still until the coins are collected (released in clearModal)
+    g.setPause('popup', true);
+    const take = () => { g.earn(amount); g.coinBurstToHud(amount); this.closeModal(); };
+    this.backAction = take;
+    w.querySelector('#off-take').onclick = take;
     w.querySelector('#off-ad').onclick = async () => {
       const ok = await g.rewardFor('offline', amount * 3);
       if (ok) { g.coinBurstToHud(amount * 3); this.closeModal(); }
     };
+  }
+
+  // ── Doctor Deck ──────────────────────────────────────────
+  // a panel at the bottom (the player can still move) while standing on the clinic's 🩺 pad
+  openClinic() {
+    const w = this.modal(`<div class="modal-head"><span>🏥 Critter Clinic</span><button class="x">✕</button></div>
+      <div class="cl-body"></div>`, 'clinic', true);
+    w.querySelector('.x').onclick = () => this.closeModal();
+    this.clinicOpen = true;
+    this.renderClinic(true);
+  }
+
+  closeClinic() { if (this.clinicOpen) this.closeModal(); }
+
+  renderClinic(force = false) {
+    const g = this.game, c = g.clinic;
+    const body = document.querySelector('.cl-body');
+    if (!body || !c) return;
+    const hurt = g.player.stack.items.filter((it) => it.hurt).length;
+    const cd = g.cooldownLeft('heal');
+    const sig = [c.queue.length + c.incoming, c.treating, hurt, c.healTime(), Ads.canRequest, Math.ceil(cd)].join();
+    if (!force && sig === this.clSig) return;
+    this.clSig = sig;
+    const note = hurt ? `Handing over ${hurt} hurt critter${hurt > 1 ? 's' : ''}…`
+      : c.full ? 'The waiting room is full: heal them all now!' : 'Bring hurt critters 🩹 (white capsules). Healed ones pay x3!';
+    body.innerHTML = `<div class="cl-stats">
+        <div><b>🤕 ${c.queue.length + c.incoming}/${BAL.clinicWaiting}</b>waiting</div>
+        <div><b>🛏️ ${c.treating}/${c.beds.length}</b>in bed</div>
+        <div><b>⏱️ ${c.healTime().toFixed(1)}s</b>per critter</div></div>
+      <div class="cl-txt">${note}</div>
+      ${c.patients ? `<button class="btn wide ad" id="cl-heal" ${cd > 0 || !Ads.canRequest ? 'disabled' : ''}>${cd > 0 ? fmtTime(cd) : `▶ Heal all ${c.patients} now`}</button>` : ''}`;
+    body.querySelector('#cl-heal')?.addEventListener('click', async () => {
+      g.audio.click();
+      await g.rewardFor('heal');
+      this.renderClinic(true);
+    });
+  }
+
+  // ── VIP truck ────────────────────────────────────────────
+  vipDone(amount, order) { this.later(() => this.vipDoneNow(amount, order)); }
+
+  vipDoneNow(amount, order) {
+    const g = this.game;
+    const w = this.modal(`<div class="modal-head center"><span>🚚 VIP order filled!</span></div>
+      <div class="off-ico">🤩</div>
+      <div class="off-txt">${order.map((l) => `${SPECIES[l.sp].emoji} x${l.n}`).join(' · ')} delivered. The VIP pays x${BAL.vipMul}!</div>
+      <div class="off-amt"><span class="coin-ico"></span>${formatNum(amount)}</div>
+      <button class="btn wide ad big" id="vip-ad" ${Ads.canRequest ? '' : 'disabled'}>▶ Collect x2 <span class="coin-ico sm"></span>${formatNum(amount * 2)}</button>
+      <button class="btn wide plain" id="vip-take">Collect</button>`, 'offline');
+    g.setPause('popup', true);
+    const take = () => { g.earn(amount); g.coinBurstToHud(amount); g.audio.unlockFx(); this.closeModal(); };
+    this.backAction = take;
+    w.querySelector('#vip-take').onclick = take;
+    w.querySelector('#vip-ad').onclick = async () => { if (await g.rewardFor('vip', amount * 2)) this.closeModal(); };
+  }
+
+  // ── Lucky Wheel ──────────────────────────────────────────
+  openWheel() {
+    const g = this.game, W = g.wheel;
+    const n = PRIZES.length, step = 360 / n;
+    const segs = PRIZES.map((p, i) => {
+      const txt = p.label || `+${formatNum(W.coins(p))}`;
+      return `<div class="wseg${p.jackpot ? ' jack' : ''}" style="transform:rotate(${i * step + step / 2}deg)"><span>${p.icon}<br>${txt}</span></div>`;
+    }).join('');
+    const w = this.modal(`<div class="modal-head"><span>🎡 Lucky Wheel</span><button class="x">✕</button></div>
+      <div class="wheel-box"><div class="wheel" id="wheel">${segs}</div><div class="wheel-hub">⭐</div><div class="wheel-ptr"></div></div>
+      <div class="wheel-res" id="wheel-res">Spin to win coins and boosts!</div>
+      <div id="wheel-btns"></div>`, 'wheel-modal');
+    const wheel = w.querySelector('#wheel'), res = w.querySelector('#wheel-res');
+    let rot = 0, spinning = false;
+    w.querySelector('.x').onclick = () => { if (!spinning) this.closeModal(); };
+    const spin = (free) => {
+      spinning = true;
+      w.querySelectorAll('#wheel-btns button').forEach((b) => { b.disabled = true; });
+      res.textContent = 'Good luck!';
+      const i = W.spin(free);
+      const center = i * step + step / 2;
+      // land segment i under the pointer at the top, after five full turns
+      rot += 360 * 5 + ((((-center - rot) % 360) + 360) % 360) + (Math.random() - 0.5) * (step - 12);
+      wheel.style.transform = `rotate(${rot}deg)`;
+      for (let k = 0; k < 14; k++) setTimeout(() => g.audio.click(), 120 + k * k * 18);
+      setTimeout(() => {
+        spinning = false;
+        if (!w.isConnected) { W.award(i); return; }
+        res.textContent = W.award(i);
+        res.classList.add('win');
+        if (PRIZES[i].jackpot) this.celebrate('👑 JACKPOT!');
+        render();
+      }, 4300);
+    };
+    const render = () => {
+      const left = W.adsLeft(), wait = W.freeIn();
+      const box = w.querySelector('#wheel-btns');
+      box.innerHTML = W.freeReady() ? '<button class="btn wide big" id="wh-free">🎡 Spin FREE!</button>'
+        : `<button class="btn wide ad big" id="wh-ad" ${left > 0 && Ads.canRequest ? '' : 'disabled'}>${left > 0 ? `▶ Spin again (${left} left today)` : 'No more spins today'}</button>
+          <div class="m-foot">Free spin in ${Math.floor(wait / 3600)}h ${Math.floor((wait % 3600) / 60)}m</div>`;
+      box.querySelector('#wh-free')?.addEventListener('click', () => { g.audio.click(); spin(true); });
+      box.querySelector('#wh-ad')?.addEventListener('click', async () => {
+        g.audio.click();
+        if (await g.rewardFor('wheel')) spin(false);
+      });
+    };
+    render();
   }
 
   // ── missions ─────────────────────────────────────────────
@@ -438,6 +580,7 @@ export class UI {
         <button class="btn wide ad big" id="d-claim2" ${Ads.canRequest ? '' : 'disabled'}>▶ Claim x2 <span class="coin-ico sm"></span>${formatNum(P.dailyAmount(day) * 2)}</button>`
         : `<div class="m-foot">Come back in ${Math.floor(wait / 3600)}h ${Math.floor((wait % 3600) / 60)}m for Day ${(day % 7) + 1}!</div>`}
       <div class="m-foot">Come back every day: miss a day and the streak starts again from Day 1.</div>`, 'daily');
+    g.setPause('popup', true); // nothing runs on behind a reward popup
     w.querySelector('.x').onclick = () => this.closeModal();
     w.querySelector('#d-claim')?.addEventListener('click', () => {
       g.audio.click();
@@ -508,6 +651,8 @@ export class UI {
         <div><b>📜</b>Missions, 📅 daily rewards and the 📖 Critterdex are on the left</div>
         <div><b>▶</b>Yellow video buttons on the right give free boosts</div>
         <div><b>👑</b>Watch out for boss critters and surprise events!</div>
+        <div><b>🏥</b>Hurt critters 🩹 heal at the Doctor Deck and pay x3</div>
+        <div><b>🚚</b>VIP trucks buy critters off the belt for x4, and 🎡 the Lucky Wheel gives free prizes</div>
         <div><b>🗺️</b>Finish the last tile to travel to a new world</div>
       </div>
       <button class="btn wide big" id="how-ok">${first ? 'Start ranching!' : 'Got it'}</button>`, 'how-to');

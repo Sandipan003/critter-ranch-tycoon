@@ -163,7 +163,9 @@ export class UnlockTile {
       this.wasOn = on;
       return false;
     }
-    if (!this.contains(player.pos) || g.state.coins < 1) { this.acc = 0; return false; }
+    // a tile that appears under the player (the next unlock on the same spot) waits until they step off
+    if (!this.contains(player.pos)) this.armed = true;
+    if (!this.armed || !this.contains(player.pos) || g.state.coins < 1) { this.acc = 0; return false; }
     // pay over ~1.6s regardless of price
     const rate = Math.max(8, this.def.cost / 1.6);
     this.acc += rate * dt;

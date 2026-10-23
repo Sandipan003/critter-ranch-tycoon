@@ -482,16 +482,19 @@ export const CAPSULE_TIERS = [
   [0x18c8b0, 0xffe066],
 ];
 const capGeoCache = new Map();
+// `tier` 1–5, or 'hurt': a white first-aid capsule with a wide red band (a hurt critter for the clinic)
 function capsuleGeo(tier) {
   if (capGeoCache.has(tier)) return capGeoCache.get(tier);
   const g = new THREE.CapsuleGeometry(0.2, 0.32, 6, 14);
-  const [top, bot] = CAPSULE_TIERS[tier].map((x) => new THREE.Color(x));
-  const band = new THREE.Color(0x30303a);
+  const hurt = tier === 'hurt';
+  const [top, bot] = (hurt ? [0xffffff, 0xffffff] : CAPSULE_TIERS[tier]).map((x) => new THREE.Color(x));
+  const band = new THREE.Color(hurt ? 0xff2d55 : 0x30303a);
+  const bandH = hurt ? 0.12 : 0.025;
   const pos = g.attributes.position;
   const col = new Float32Array(pos.count * 3);
   for (let i = 0; i < pos.count; i++) {
     const y = pos.getY(i);
-    const cc = Math.abs(y) < 0.025 ? band : y > 0 ? top : bot;
+    const cc = Math.abs(y) < bandH ? band : y > 0 ? top : bot;
     col.set([cc.r, cc.g, cc.b], i * 3);
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -642,6 +645,90 @@ export function barrelGeometry() {
     colored(new THREE.CylinderGeometry(0.37, 0.37, 0.07, 12), 0x55555f, M([0, 0.72, 0])),
   ]);
   return g;
+}
+
+// ── Doctor Deck, snack stand, VIP truck (merged, vertex coloured) ─
+// The clinic: white walls, red roof, door and windows on the west side (towards the beds)
+export function clinicGeometry() {
+  const W = 1.8, D = 4.6, H = 2.0;
+  const glass = 0x9fd4ff;
+  return mergeGeometries([
+    colored(GEO.box, 0xf4f7fb, M([0, H / 2, 0], [W, H, D])),
+    colored(GEO.box, 0xc9d6e6, M([0, 0.12, 0], [W + 0.1, 0.24, D + 0.1])),
+    colored(GEO.box, 0xe8414f, M([0, H + 0.15, 0], [W + 0.5, 0.3, D + 0.5])),
+    colored(GEO.box, 0xc8303e, M([0, H + 0.4, 0], [W * 0.6, 0.2, D + 0.3])),
+    colored(GEO.box, 0x5aa8ef, M([-W / 2 - 0.02, 0.78, 0], [0.06, 1.56, 1.0])),
+    colored(GEO.box, 0xffffff, M([-W / 2 - 0.03, 1.62, 0], [0.06, 0.12, 1.16])),
+    colored(GEO.box, glass, M([-W / 2 - 0.02, 1.2, -1.5], [0.06, 0.62, 0.8])),
+    colored(GEO.box, glass, M([-W / 2 - 0.02, 1.2, 1.5], [0.06, 0.62, 0.8])),
+    colored(GEO.box, glass, M([0, 1.2, D / 2 + 0.02], [0.9, 0.62, 0.06])),
+  ]);
+}
+
+// White sign with a red cross, standing on the clinic roof facing the camera
+export function crossSignGeometry() {
+  return mergeGeometries([
+    colored(GEO.box, 0x9aa3b5, M([0, 0.3, 0], [0.12, 0.6, 0.12])),
+    colored(GEO.box, 0xffffff, M([0, 1.05, 0], [1.25, 1.25, 0.14])),
+    colored(GEO.box, 0xff2d55, M([0, 1.05, 0.08], [0.85, 0.28, 0.04])),
+    colored(GEO.box, 0xff2d55, M([0, 1.05, 0.08], [0.28, 0.85, 0.04])),
+  ]);
+}
+
+// Hospital bed along x, pillow at +x (by the clinic wall)
+export function bedGeometry() {
+  return mergeGeometries([
+    colored(GEO.box, 0x9c6a3c, M([0, 0.2, 0], [1.4, 0.22, 0.95])),
+    colored(GEO.box, 0x9c6a3c, M([0.68, 0.42, 0], [0.1, 0.66, 0.95])),
+    colored(GEO.box, 0xffffff, M([0, 0.37, 0], [1.3, 0.14, 0.85])),
+    colored(GEO.box, 0xf0f3ff, M([0.44, 0.49, 0], [0.32, 0.12, 0.62])),
+    colored(GEO.box, 0x7cc4ff, M([-0.2, 0.46, 0], [0.86, 0.06, 0.88])),
+  ]);
+}
+
+// Ice-cream stand: counter facing -x (the customers' queue), striped awning, a giant cone on top
+export function snackStandGeometry() {
+  const poles = [[-0.5, -0.85], [0.5, -0.85], [-0.5, 0.85], [0.5, 0.85]]
+    .map(([x, z]) => colored(GEO.cyl, 0xe6e6ee, M([x, 1.5, z], [0.05, 1.0, 0.05])));
+  const awning = [0, 1, 2, 3, 4].map((i) => colored(GEO.box, i % 2 ? 0xffffff : 0xff5c8a, M([0, 2.05, -0.8 + i * 0.4], [1.4, 0.12, 0.4])));
+  return mergeGeometries([
+    colored(GEO.box, 0xfff3e0, M([0, 0.5, 0], [1.1, 1.0, 1.8])),
+    colored(GEO.box, 0xff8fb8, M([0, 1.04, 0], [1.25, 0.08, 1.95])),
+    colored(GEO.box, 0xff8fb8, M([-0.57, 0.5, 0], [0.04, 0.42, 1.5])),
+    colored(GEO.box, 0x8fe3ff, M([-0.57, 0.62, 0], [0.05, 0.12, 1.5])),
+    ...poles,
+    ...awning,
+    colored(new THREE.ConeGeometry(0.3, 0.8, 10), 0xe0a050, M([0, 2.5, 0], [1, 1, 1], [Math.PI, 0, 0])),
+    colored(new THREE.SphereGeometry(0.34, 12, 8), 0xffb6d0, M([0, 2.98, 0])),
+    colored(new THREE.SphereGeometry(0.16, 10, 6), 0xff2d55, M([0, 3.35, 0])),
+  ]);
+}
+
+// VIP pickup truck facing -z: purple cab in front, open bed behind for the critters it buys
+export const TRUCK_BED = { y: 0.95, slots: [-0.5, 0, 0.5].flatMap((x) => [-0.25, 0.3, 0.85, 1.4].map((z) => [x, z])) };
+export function truckGeometry() {
+  const P = 0x8a4dff, G = 0xffc93a, glass = 0x2b3a66;
+  const wheel = (x, z) => [
+    colored(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 14), 0x2a2a33, M([x, 0.42, z], [1, 1, 1], [0, 0, Math.PI / 2])),
+    colored(new THREE.CylinderGeometry(0.18, 0.18, 0.32, 10), 0xd8dde6, M([x, 0.42, z], [1, 1, 1], [0, 0, Math.PI / 2])),
+  ];
+  return mergeGeometries([
+    colored(GEO.box, 0x3a3a46, M([0, 0.55, 0], [1.8, 0.3, 4.1])),
+    colored(GEO.box, P, M([0, 1.25, -1.45], [1.9, 1.2, 1.3])),
+    colored(GEO.box, glass, M([0, 1.5, -2.11], [1.6, 0.55, 0.04])),
+    colored(GEO.box, glass, M([0.96, 1.5, -1.45], [0.04, 0.5, 0.9])),
+    colored(GEO.box, glass, M([-0.96, 1.5, -1.45], [0.04, 0.5, 0.9])),
+    colored(GEO.box, G, M([0, 1.9, -1.45], [1.95, 0.08, 1.35])),
+    colored(GEO.box, 0xffffff, M([0.6, 0.85, -2.11], [0.3, 0.18, 0.04])),
+    colored(GEO.box, 0xffffff, M([-0.6, 0.85, -2.11], [0.3, 0.18, 0.04])),
+    colored(GEO.box, P, M([0, 0.75, 0.65], [1.9, 0.12, 2.9])),
+    colored(GEO.box, P, M([0.92, 1.1, 0.65], [0.08, 0.6, 2.9])),
+    colored(GEO.box, P, M([-0.92, 1.1, 0.65], [0.08, 0.6, 2.9])),
+    colored(GEO.box, G, M([0, 1.1, 2.08], [1.9, 0.6, 0.08])),
+    colored(GEO.box, G, M([0.93, 1.42, 0.65], [0.1, 0.06, 2.9])),
+    colored(GEO.box, G, M([-0.93, 1.42, 0.65], [0.1, 0.06, 2.9])),
+    ...wheel(0.95, -1.3), ...wheel(-0.95, -1.3), ...wheel(0.95, 1.3), ...wheel(-0.95, 1.3),
+  ]);
 }
 
 export function machineMesh() {
