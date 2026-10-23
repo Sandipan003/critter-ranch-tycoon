@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Critter Ranch Tycoon</string>
+    <string name="title_activity_main">Critter Ranch Tycoon</string>
+    <string name="package_name">com.critterranch.tycoon</string>
+    <string name="custom_url_scheme">com.critterranch.tycoon</string>
+    <!-- AdMob App ID for Critter Ranch Tycoon (apps.admob.com). Test ads are controlled by ADS.testMode in src/config.js. -->
+    <string name="admob_app_id">ca-app-pub-7976242341858407~1300328086</string>
+</resources>

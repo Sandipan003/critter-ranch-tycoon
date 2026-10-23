@@ -1,0 +1,19 @@
+{
+  "appId": "com.critterranch.tycoon",
+  "appName": "Critter Ranch Tycoon",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#5cb83c",
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SystemBars": {
+      "hidden": true,
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover"
+    }
+  }
+}

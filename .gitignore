@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.DS_Store
+# signing secrets — never commit or share these
+android/keystore.properties
+*.jks
+*.keystore
+builds/
+
+# Vercel project link (created by `vercel` in website/)
+.vercel/
+
+# rendered brand masters (regenerate with tools/brand.html; finished art lives in store-assets/ and public/brand/)
+brand-out/
+# local editor / agent settings
+.claude/settings.local.json
+*.log

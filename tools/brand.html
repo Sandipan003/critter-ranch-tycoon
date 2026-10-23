@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Critter Ranch brand renderer</title>
+    <style>
+      body { margin: 0; padding: 16px; background: #2b2f3a; color: #fff; font: 14px system-ui, sans-serif; }
+      #out { display: flex; flex-wrap: wrap; gap: 12px; }
+      #out figure { margin: 0; background: repeating-conic-gradient(#555 0 25%, #444 0 50%) 0 0 / 20px 20px; }
+      #out canvas { display: block; max-width: 100%; height: auto; }
+      #out figcaption { background: #111; padding: 4px 8px; }
+    </style>
+  </head>
+  <body>
+    <p>Brand renderer (dev tool). Run <code>window.brand</code> functions from the console.</p>
+    <div id="out"></div>
+    <script type="module">
+      import * as brand from './brand.js';
+      window.brand = brand;
+      window.show = (name, c, width = 320) => {
+        const f = document.createElement('figure');
+        c.style.width = width + 'px';
+        f.append(c, Object.assign(document.createElement('figcaption'), { textContent: name }));
+        document.getElementById('out').append(f);
+      };
+      brand.ready.then(() => { window.brandReady = true; });
+    </script>
+  </body>
+</html>

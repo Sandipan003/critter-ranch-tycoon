@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#5cb83c" />
+    <title>Critter Ranch Tycoon</title>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="ad-slot"></div>
+
+    <div id="hud">
+      <div class="top">
+        <div class="profile hud-btn" id="profile">
+          <div class="avatar"><span id="avatar-ico">👩‍🦰</span><div class="lvl-badge" id="lvl">1</div></div>
+          <div class="pinfo"><div class="pname" id="pname">Rancher</div><div class="xp"><div id="xp-fill"></div></div></div>
+        </div>
+        <div class="coin-pill" id="coin-pill"><span class="coin-ico"></span><span id="coins">0</span></div>
+      </div>
+      <button class="hud-btn settings" id="btn-settings" aria-label="Settings">⚙️</button>
+      <button class="hud-btn world-badge" id="world-badge" aria-label="World map"></button>
+      <div class="side">
+        <button class="hud-btn ad-btn" id="btn-free"><span class="ico">🎁</span><span class="t" id="free-amt">+50</span><span class="ad-tag">▶</span></button>
+        <button class="hud-btn ad-btn" id="btn-income"><span class="ico">💰</span><span class="t" id="income-txt">x2 Coins</span><span class="ad-tag">▶</span></button>
+        <button class="hud-btn ad-btn" id="btn-golden"><span class="ico">⚡</span><span class="t" id="golden-txt">100% Catch</span><span class="ad-tag">▶</span></button>
+      </div>
+      <div class="left-btns" id="left-btns">
+        <button class="hud-btn round-btn" id="btn-missions" aria-label="Missions">📜<span class="badge" id="mission-badge"></span></button>
+        <button class="hud-btn round-btn" id="btn-daily" aria-label="Daily reward">📅<span class="badge" id="daily-badge">!</span></button>
+        <button class="hud-btn round-btn" id="btn-dex" aria-label="Critterdex">📖</button>
+      </div>
+      <div id="event-chip"></div>
+      <div id="tut">
+        <div class="tut-top"><span id="tut-step"></span><span class="tut-dots" id="tut-dots"></span></div>
+        <div class="tut-main"><div class="tut-ico" id="tut-ico"></div><div><div class="tut-title" id="tut-title"></div><div class="tut-text" id="tut-text"></div></div></div>
+      </div>
+      <div id="tut-hand"><div class="hand-trail"></div><div class="hand">👆</div><div class="hand-txt">Drag to move</div></div>
+      <div id="tip" class="hud-btn"><span class="tip-ico">💡</span><span id="tip-text"></span></div>
+      <div id="hint"></div>
+      <div id="toast"></div>
+    </div>
+
+    <div id="joy-base"><div id="joy-knob"></div></div>
+    <div id="modal-root"></div>
+
+    <div id="pause">
+      <div class="pause-inner">
+        <div class="pause-ico">⏸️</div>
+        <div class="pause-title">Paused</div>
+        <button id="btn-resume">▶ Continue</button>
+        <button id="btn-exit">Exit game</button>
+      </div>
+    </div>
+
+    <div id="title">
+      <div class="title-inner">
+        <div class="logo">
+          <img class="logo-img" src="./brand/logo.webp" width="960" height="600" alt="Critter Ranch Tycoon" />
+          <h1 id="title-name" class="sr-only">Critter Ranch Tycoon</h1>
+          <div class="logo-sub">Catch · Sell · Grow your ranch</div>
+        </div>
+        <button id="btn-play">PLAY</button>
+      </div>
+    </div>
+
+    <div id="boot"><img class="boot-logo" src="./brand/logo.webp" width="960" height="600" alt="Critter Ranch Tycoon" /><div id="boot-text">Loading…</div></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
