@@ -3,6 +3,9 @@
 // ─────────────────────────────────────────────────────────────
 
 export const GAME_NAME = 'Critter Ranch Tycoon';
+export const VERSION = '1.1.1';
+// players who finished the tutorial see the "What's new" card once when this changes
+export const NEWS = '1.1.0';
 
 // AdMob ad unit IDs.
 // While `testMode` is true, Google's official demo units are used so you can
@@ -67,7 +70,8 @@ export const BAL = {
 
 // Per-world upgrades (each world starts at Lv.1). Prices grow by `mul` per level and are multiplied
 // by the world's costMul, so late levels stay a coin sink; `max: Infinity` never caps (endless sink).
-// `requires` hides an upgrade until that unlock.
+// `requires` hides an upgrade until that unlock; with `teaser` it shows greyed out instead
+// ("🔒 Build the … first"), so players see what the Snack Stand and the Doctor Deck will bring.
 export const UPGRADES = [
   { id: 'capacity', name: 'Backpack', icon: '🎒', desc: '+2 carry slots', base: 20, mul: 1.6, max: 15 },
   { id: 'throw', name: 'Throw Speed', icon: '💨', desc: 'Throw faster, multi-throw', base: 25, mul: 1.6, max: 15 },
@@ -76,6 +80,8 @@ export const UPGRADES = [
   { id: 'value', name: 'Better Prices', icon: '💰', desc: '+15% sale value', base: 40, mul: 1.6, max: Infinity },
   { id: 'pens', name: 'Pen Feeding', icon: '🍖', desc: '+25% coins from every pen', base: 120, mul: 1.55, max: Infinity, requires: 'penW' },
   { id: 'helpers', name: 'Helper Training', icon: '🧑‍🌾', desc: 'Helpers walk, throw and carry more', base: 200, mul: 1.6, max: 15, requires: 'helper1' },
-  { id: 'snack', name: 'Snack Menu', icon: '🍦', desc: '+30% snack stand sales', base: 300, mul: 1.55, max: Infinity, requires: 'snack' },
-  { id: 'clinic', name: 'Doctor Skill', icon: '🩺', desc: 'The doctor heals 12% faster', base: 1500, mul: 1.6, max: 12, requires: 'clinic' },
+  { id: 'snack', name: 'Snack Menu', icon: '🍦', desc: '+30% coins per snack', base: 300, mul: 1.55, max: Infinity, requires: 'snack', teaser: '🍦 Snack Stand' },
+  { id: 'snackSpeed', name: 'Fast Service', icon: '🛎️', desc: 'Snacks are served 10% faster', base: 450, mul: 1.6, max: 10, requires: 'snack', teaser: '🍦 Snack Stand' },
+  { id: 'clinic', name: 'Doctor Skill', icon: '🩺', desc: 'The doctor heals 12% faster', base: 1500, mul: 1.6, max: 12, requires: 'clinic', teaser: '🏥 Doctor Deck' },
+  { id: 'clinicFee', name: 'Clinic Fees', icon: '💊', desc: '+25% coins for every healed critter', base: 1800, mul: 1.55, max: Infinity, requires: 'clinic', teaser: '🏥 Doctor Deck' },
 ];

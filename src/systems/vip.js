@@ -78,7 +78,7 @@ export class VipTruck {
     const list = this.order.map((l) => `${SPECIES[l.sp].emoji} ${l.n} ${SPECIES[l.sp].name}s`).join(' + ');
     g.ui.celebrate('🚚 VIP order!');
     g.ui.toast(`Sell ${list} within 3 min!`);
-    g.tip('vip', `🚚 A VIP truck! It buys ${list} straight off the belt and pays x${BAL.vipMul} if you fill the order in time.`);
+    g.ui.intro('vip'); // the first time: how it works
     g.audio.unlockFx();
   }
 

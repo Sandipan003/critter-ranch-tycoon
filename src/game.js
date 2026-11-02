@@ -19,6 +19,7 @@ import { Clinic } from './systems/clinic.js';
 import { SnackStand } from './systems/snack.js';
 import { VipTruck } from './systems/vip.js';
 import { Wheel } from './systems/wheel.js';
+import { Growth } from './growth.js';
 import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { Ads } from './ads.js';
@@ -429,10 +430,9 @@ export class Game {
       helper1: '🧑‍🌾 Your helper catches critters and sells them for you. Hire more to earn while you relax!',
       yardE: '🏡 Pastures make your ranch bigger: walk through the gap in the fence to reach the new pen.',
       balE: '🪵 A balcony wing: room for one more helper. Walk through the gap in the north fence.',
-      snack: '🍦 Customers waiting in line now buy ice cream: the coins ride the belt to your 💰 pad.',
-      clinic: '🏥 Some wild critters are hurt now 🩹. Bring them (white capsules) to the 🩺 pad: healed critters pay x3!',
     };
     if (tips[id]) this.tip(id, tips[id]);
+    if (id === 'snack' || id === 'clinic') setTimeout(() => this.ui.intro(id), 1500); // how the new feature works
     this.save();
     if (this.state.stats.unlocks % ADS.interstitialEveryUnlocks === 0) {
       setTimeout(() => Ads.maybeInterstitial(), 1600);
@@ -520,6 +520,25 @@ export class Game {
     return true;
   }
 
+  // ── invite friends ───────────────────────────────────────
+  // sharing the game pays the 🎁 free-coins amount once a day
+  shareReady() { return this.state.shareDay !== new Date().toDateString(); }
+
+  async invite() {
+    const ok = await Growth.share('I\'m building the cutest critter ranch 🐾 Catch critters, sell them and grow your own ranch in Critter Ranch Tycoon!');
+    if (!ok) return false;
+    if (this.shareReady()) {
+      this.state.shareDay = new Date().toDateString();
+      const amt = this.freeCoinsAmount();
+      this.earn(amt);
+      this.coinBurstToHud(amt);
+      this.audio.unlockFx();
+      this.ui.toast(`📣 Thanks for sharing! +${formatNum(amt)} coins`);
+    } else if (!Capacitor.isNativePlatform()) this.ui.toast('Link copied: send it to a friend!');
+    this.save();
+    return true;
+  }
+
   coinBurstToHud(amount) {
     this.floatText.spawn(this.player.pos.clone().setY(3.2), `+${formatNum(amount)}`, '#ffe14a', 1.4);
     this.particles.burst(this.player.pos.clone().setY(2), { color: 0xffd23a, count: 20, star: true, speed: 5, size: 0.45 });
@@ -530,7 +549,7 @@ export class Game {
     let r = 0;
     for (const pen of Object.values(this.pens)) r += (pen.def.rate * this.penMul()) / 5;
     r += this.helpers.length * 1.2 * WORLD.valueMul;
-    if (this.snack) r += (BAL.snackValue * WORLD.valueMul * (1 + (this.state.upgrades.snack || 0) * 0.3)) / BAL.snackSec;
+    if (this.snack) r += (BAL.snackValue * WORLD.valueMul * (1 + (this.state.upgrades.snack || 0) * 0.3)) / this.snack.serveSec();
     return r * (1 + this.state.upgrades.value * 0.15) * (1 + this.progress.dexBonus) * (this.state.crown ? 2 : 1);
   }
 
@@ -540,6 +559,17 @@ export class Game {
     const amount = Math.floor(this.offlineRate() * sec * 0.5);
     if (amount < 5) return;
     this.ui.offline(amount, sec);
+  }
+
+  // How often an animated character advances its skeleton (every Nth frame, with the summed time):
+  // less the further it is from where the camera looks (off-screen hardly at all), more so on Low
+  // phones. Customers, the snack stand, the clinic and the pen giants use it.
+  animLod(pos) {
+    const d = Math.hypot(pos.x - this.camLook.x, pos.z - this.camLook.z);
+    if (d > 30) return 6;
+    if (d > 20) return this.low ? 3 : 2;
+    if (d > 13) return this.low ? 2 : 1;
+    return 1;
   }
 
   // ── main loop ────────────────────────────────────────────

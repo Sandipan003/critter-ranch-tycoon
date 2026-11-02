@@ -56,8 +56,10 @@ function ribbon(path, width, y, samples = 160) {
   return g;
 }
 
-class Customer {
-  constructor(scene, spot) {
+// A shopper. `wish` is the emoji in their speech bubble (a critter of this world by default); the
+// snack stand and the clinic's pet owners use them too.
+export class Customer {
+  constructor(scene, spot, wish = null) {
     this.h = buildHumanoid({
       skin: pick(SKINS), hair: pick(HAIRS), shirt: pick(SHIRTS), pants: pick([0x334155, 0x3f63c8, 0x5b4636, 0x222831]),
       shoes: 0x3b2a20, hat: Math.random() < 0.35 ? pick([0xd0312d, 0x2f5fd0, 0x2a2a2a]) : null, scale: 1.05 + Math.random() * 0.1,
@@ -66,7 +68,7 @@ class Customer {
     this.mesh = this.h.root;
     this.mesh.position.set(spot.x + (Math.random() - 0.5) * 3, 0, 23 + Math.random() * 2);
     scene.add(this.mesh);
-    this.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture(pick(worldEmojis())), transparent: true, depthWrite: false }));
+    this.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture(wish || pick(worldEmojis())), transparent: true, depthWrite: false }));
     this.bubble.scale.set(0.9, 1.05, 1);
     this.bubble.position.y = this.h.holdY + 0.2;
     this.bubble.visible = false;
@@ -74,6 +76,13 @@ class Customer {
     this.target = new THREE.Vector3();
     this.state = 'walk';
     this.holding = null;
+  }
+
+  // gone for good: frees its skeleton (and its own bubble material; the texture is shared)
+  dispose(scene) {
+    scene.remove(this.mesh);
+    this.bubble.material.dispose();
+    disposeBaked(this.mesh);
   }
 
   walkTo(dt, speed = 3.2) {
@@ -175,11 +184,13 @@ export class SellBelt {
     this.pending.push(item);
   }
 
+  pointAtX(x) { return this.path.getPointAt(this.sAtX(x) / this.length); }
+
   // Coins put on the bottom straight at `x` (snack stand sales) ride to the coin pad like a customer's
   addCoinsAt(x, value, n = 2) {
     const s = this.sAtX(x);
     const mesh = buildCoinStack(n);
-    mesh.position.copy(this.path.getPointAt(s / this.length));
+    mesh.position.copy(this.pointAtX(x));
     this.game.scene.add(mesh);
     let idx = this.items.findIndex((it) => it.s < s);
     if (idx < 0) idx = this.items.length;
@@ -189,6 +200,7 @@ export class SellBelt {
   // Customers -----------------------------------------------------------
   updateCustomers(dt) {
     const scene = this.game.scene;
+    for (const c of this.customers) c.h.lod = this.game.animLod(c.mesh.position);
     this.spawnTimer -= dt;
     const total = this.pickups.reduce((a, p) => a + p.queue.length, 0);
     // fewer people in the queues on Low (each one is an animated character)
@@ -242,7 +254,8 @@ export class SellBelt {
         c.bubble.position.y = c.h.holdY + 0.85;
       },
     });
-    c.target.set(c.mesh.position.x + (Math.random() > 0.5 ? 14 : -14), 0, c.mesh.position.z + 22);
+    // home down the road, clear of the VIP truck (west) and the snack line and the clinic (east)
+    c.target.set(c.mesh.position.x + (Math.random() - 0.5) * 6, 0, c.mesh.position.z + 24);
     // the customer pays: a little coin stack rides the belt to the coin pad
     const coins = buildCoinStack(Math.min(4, 1 + Math.floor(item.value / 8)));
     coins.position.copy(this.path.getPointAt(pickup.s / this.length));

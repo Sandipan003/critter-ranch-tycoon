@@ -40,6 +40,7 @@ export const L = {
   clinic: {
     deck: { x0: 3.6, x1: 10.4, z0: 10.6, z1: 16.4 }, gap: [4.0, 6.8], walkX1: 6.9, // beds + clinic east of walkX1
     pad: [5.3, 12.2], coin: [5.3, 15.0], house: [9.3, 13.5], beds: [[7.6, 11.9], [7.6, 13.5], [7.6, 15.1]],
+    owners: [[6.4, 17.5], [8.8, 17.5]], // outside the south fence: pet owners wait here while their pet is treated
   },
   // Beside the customers' queues, south of the belt: the snack stand (its sales ride the belt from
   // `beltX`) and the parking spot of the VIP truck (it takes wanted critters off the belt at `beltX`)

@@ -1,4 +1,5 @@
 import { formatNum } from '../world/textures.js';
+import { NEWS } from '../config.js';
 
 // First-time guide: a welcome card, then six steps (move → catch → sell → collect → first unlock →
 // first pen), each with a card at the top of the screen and the green arrow pointing where to go,
@@ -99,6 +100,7 @@ export class Tutorial {
     this.i = STEPS.length;
     g.ui.tutCard(null);
     g.state.tutorialDone = true;
+    g.state.news = NEWS; // the guide's last card covers the new features, no "What's new" later
     g.save();
     g.onTutorialDone?.();
     g.ui.later(() => g.ui.howToPlay(true));

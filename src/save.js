@@ -1,6 +1,6 @@
 const KEY = 'critter_ranch_save_v1';
 
-export const freshUpgrades = () => ({ capacity: 0, throw: 0, power: 0, speed: 0, value: 0, pens: 0, helpers: 0, snack: 0, clinic: 0 });
+export const freshUpgrades = () => ({ capacity: 0, throw: 0, power: 0, speed: 0, value: 0, pens: 0, helpers: 0, snack: 0, snackSpeed: 0, clinic: 0, clinicFee: 0 });
 
 export function defaultState() {
   return {

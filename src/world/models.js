@@ -133,14 +133,19 @@ function modelHumanoid(o) {
   body.add(back);
   root.scale.setScalar(o.scale || 1);
   const hand = bones.get('arm-right');
-  return {
+  let acc = 0, frame = 0;
+  const h = {
     root, body, head: null, legs: [], arms: [], back, animator,
     holdY: HUMAN_H + 0.3, // where customers hold a bought capsule above their head
+    lod: 1, // advance the skeleton every `lod`-th frame (with the summed time): set for far characters
     animate(dt, speed) {
       if (speed < 0.1) animator.loop('idle');
       else if (speed < 3.4) animator.loop('walk', THREE.MathUtils.clamp(speed / 2.4, 0.7, 1.5));
       else animator.loop('run', THREE.MathUtils.clamp(speed / 5.6, 0.8, 1.4));
-      animator.update(dt);
+      acc += dt;
+      if (++frame % h.lod) return;
+      animator.update(acc);
+      acc = 0;
     },
     handWorld(v) {
       if (!hand) return root.localToWorld(v.set(-0.35, 1.0, 0.25));
@@ -151,6 +156,7 @@ function modelHumanoid(o) {
     throwAnim() { animator.once('throw', 1.8); },
     emote(name) { animator.once(name, 1, { restart: false }); },
   };
+  return h;
 }
 
 function proceduralHumanoid(o) {
@@ -454,18 +460,23 @@ function modelCritter(def, scale) {
   blob.scale.setScalar(Math.max(0.9, width * 0.95));
   root.add(blob);
   const flee = animator.has('run') ? 'run' : 'hop';
-  let hit = false;
-  return {
+  let hit = false, acc = 0, frame = 0;
+  const c = {
     root, body, feet: [], tail: null, height: def.modelH + (def.hover || 0), animator,
+    lod: 1, // as for humanoids (wild critters throttle themselves)
     animate(dt, mode, timeScale = 1) {
       if (mode === 'captured') {
         if (!hit) { hit = true; animator.once('hit', 1.6); }
       } else if (mode === 'hop') animator.loop(flee, 1.3);
       else animator.loop(mode, timeScale);
-      animator.update(dt);
+      acc += dt;
+      if (++frame % c.lod) return;
+      animator.update(acc);
+      acc = 0;
     },
     emote(name, timeScale = 1) { animator.once(name, timeScale, { restart: false }); },
   };
+  return c;
 }
 
 let SHADOW_GEO = new THREE.PlaneGeometry(1, 1);
@@ -702,6 +713,19 @@ export function snackStandGeometry() {
     colored(new THREE.SphereGeometry(0.34, 12, 8), 0xffb6d0, M([0, 2.98, 0])),
     colored(new THREE.SphereGeometry(0.16, 10, 6), 0xff2d55, M([0, 3.35, 0])),
   ]);
+}
+
+// The ice cream a snack customer carries away (one shared geometry)
+let coneGeo = null;
+export function buildIceCream() {
+  coneGeo = coneGeo || mergeGeometries([
+    colored(new THREE.ConeGeometry(0.15, 0.4, 8), 0xe0a050, M([0, 0.2, 0], [1, 1, 1], [Math.PI, 0, 0])),
+    colored(new THREE.SphereGeometry(0.17, 10, 8), 0xffb6d0, M([0, 0.45, 0])),
+    colored(new THREE.SphereGeometry(0.07, 8, 6), 0xff2d55, M([0, 0.63, 0])),
+  ]);
+  const m = new THREE.Mesh(coneGeo, VCOL_MAT);
+  m.castShadow = true;
+  return m;
 }
 
 // VIP pickup truck facing -z: purple cab in front, open bed behind for the critters it buys

@@ -34,11 +34,14 @@ Steps a player has already done are skipped. Ad buttons, events, the daily popup
 - **Pause:** leaving the app pauses and saves the game. Coming back shows a pause screen, and play continues on tap (then the offline earnings popup). On Android, the back button opens Continue / Exit game.
   Code: `src/systems/progress.js` (missions, daily, Critterdex), `src/systems/events.js` (events, bosses).
 
-**More ways to earn (v1.0.9):**
-- 🍦 **Snack Stand** (unlock after the Express Belt): the vendor sells ice cream to customers waiting in line, and the coins ride the belt to the 💰 pad. It also earns offline. The Snack Menu upgrade adds +30% per level. ▶ Snack Rush gives x3 snack sales for 2 minutes.
+**More ways to earn (v1.0.9, customers and upgrades v1.1.0):**
+- 🍦 **Snack Stand** (unlock after the Express Belt): snack customers walk up from the road and line up at the counter (3 at a time, 2 on Low).
+  - Each one leaves with a cone, and the coins fly onto the belt and ride to the 💰 pad. It also earns offline.
+  - Upgrades: Snack Menu (+30% coins per level) and Fast Service (10% faster per level). ▶ Snack Rush gives x3 snack sales for 2 minutes.
 - 🏥 **Doctor Deck** (unlock on the East Pasture deck, through a gap in its south fence): once it's built, 22% of wild critters are hurt 🩹 and come back in white capsules with a red band.
   - Drop them on the 🩺 pad. The doctor treats three at a time on the beds, and each healed critter pays x3 on the clinic's coin pad.
-  - The waiting room holds 12. Doctor Skill heals 12% faster per level.
+  - Pet owners also walk up to the clinic's south fence with a sick pet (2 at a time, 1 on Low). The pet hops over to a bed, then back into their arms when it's healed, and the owner pays like a healed critter.
+  - The waiting room holds 12. Upgrades: Doctor Skill (heals 12% faster per level) and Clinic Fees (+25% clinic coins per level).
   - ▶ Heal all treats everyone at once. It shows on the 🩺 pad's panel, and as a HUD button when 3 or more are waiting.
   - The green arrow points to the clinic while you carry hurt critters.
 - 🚚 **VIP truck** (once the first helper is hired, every 3–5 minutes): it parks beside the belt with an order for two kinds of critters (for example 🐧 x6 + 🐺 x3) and 3 minutes on the clock.
@@ -46,6 +49,14 @@ Steps a player has already done are skipped. Ad buttons, events, the daily popup
   - A filled order pays x4 their price, ▶ x2 with a video. If time runs out it pays the normal price for what it got.
 - 🎡 **Lucky Wheel** (left side): one free spin every 4 hours, plus up to 8 video spins a day. Prizes are coins (1–12x the 🎁 amount, 👑 jackpot), x2 income or 100% catch.
 - New missions: heal hurt critters, sell snacks, fill a VIP order.
+- **Explaining it:**
+  - Players who already finished the guide get a one-time 🎉 "What's new" card when they open the updated game (`NEWS` in `src/config.js`; also under Settings).
+  - The Snack Stand, the Doctor Deck and the first VIP truck each show a "how it works" card the first time they appear.
+  - Before the stand or the clinic is built, the Upgrades panel shows their four upgrades greyed out ("🔒 Build the … first").
+- **Low-end phones:** everything is available on Low. Fewer extra customers walk around there.
+  - Customers, the vendor, the doctor, patients and pen giants far from the camera (or off screen) advance their animation only every 2nd–6th frame (`animLod` in `src/game.js`).
+  - The clinic's beds are one mesh.
+  - Measured on the emulator in Low mode with a software GPU: a steady 30 fps cap, about 90 draw calls by the Doctor Deck.
 - Code: `src/systems/clinic.js`, `snack.js`, `vip.js`, `wheel.js`. Positions are in `L.clinic` / `L.snack` / `L.vip` in `src/world/layout.js`, and balance numbers in `BAL` in `src/config.js`.
 
 **Internet required (v1.0.9):** without a connection the game shows a full-screen "Internet is off" card (with Try again) and doesn't start.
@@ -126,6 +137,8 @@ The species → model mapping is `SPECIES[*].model` in `src/world/models.js`. Th
 | `src/systems/` | Gameplay: catching, back stack, belt and customers, pens, helpers, pads, Doctor Deck, snack stand, VIP truck, Lucky Wheel |
 | `src/ads.js` | AdMob wrapper (consent, rewarded, interstitial, banner) |
 | `src/net.js` | Internet check and the "Internet is off" screen |
+| `src/growth.js` + `android/.../GrowthPlugin.java` | 📣 Invite friends (share sheet, tagged Play link, coins for the first share a day), ⭐ Rate the game (Play page), Google Play's in-app review card after a VIP order or a new world (returning players, at most every 4 days) |
+| `docs/GROWTH.md` | How to get more players: store listing, Hindi, screenshots, Google Ads, short videos |
 | `src/ui.js`, `src/styles.css` | HUD, upgrade panel, settings, offline-earnings popup |
 | `tools/brand.html` + `tools/brand.js`, `scripts/apply_brand.py` | Brand art: renders the logo, app icon, splash and feature graphic from the game's 3D critters (open `/tools/brand.html` on `npm run dev`, run `brand.exportAll()` with a local receiver on :5199 writing `brand-out/` + `public/brand/`), then sizes them into Android resources and `store-assets/` |
 | `scripts/build-models.mjs`, `assets-src/`, `public/models/` | Character model pipeline: sources → game-ready GLBs |

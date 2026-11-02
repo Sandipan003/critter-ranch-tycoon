@@ -1,12 +1,42 @@
 import { formatNum } from './world/textures.js';
-import { UPGRADES, GAME_NAME, ADS, BAL } from './config.js';
+import { UPGRADES, GAME_NAME, VERSION, NEWS, ADS, BAL } from './config.js';
 import { Ads } from './ads.js';
 import { WORLD, worldsUpTo, levelRange, worldById } from './world/worlds.js';
 import { SPECIES } from './world/models.js';
 import { DAILY } from './systems/progress.js';
 import { PRIZES } from './systems/wheel.js';
+import { Growth } from './growth.js';
 
 const $ = (s) => document.querySelector(s);
+
+// How a new feature works, shown the first time it appears (see UI.intro)
+const INTROS = {
+  snack: {
+    icon: '🍦', title: 'Snack Stand is open!', lines: [
+      ['🧍', 'Customers walk up to the stand and line up for ice cream'],
+      ['💰', 'Every snack pays coins: they ride the belt to your 💰 pad'],
+      ['⬆️', 'Snack Menu and Fast Service upgrades make it earn more'],
+      ['▶', 'Snack Rush (right side): x3 snack coins for 2 minutes'],
+    ],
+  },
+  clinic: {
+    icon: '🏥', title: 'Doctor Deck is open!', lines: [
+      ['🩹', 'Some wild critters are hurt now: you catch them in white capsules'],
+      ['🩺', 'Carry them to the 🩺 pad: the doctor heals them on the beds'],
+      ['💖', 'Healed critters pay x3 coins on the clinic\'s 💰 pad'],
+      ['🧑', 'Pet owners bring their sick pets to the fence and pay a fee too'],
+      ['⬆️', 'Doctor Skill and Clinic Fees upgrades · ▶ Heal all at once'],
+    ],
+  },
+  vip: {
+    icon: '🚚', title: 'A VIP truck is here!', lines: [
+      ['📋', 'It wants the critters shown at the top of the screen'],
+      ['📦', 'Sell critters on the belt as usual: the truck grabs the ones it wants'],
+      ['⏱️', 'Fill the order before the timer runs out'],
+      ['💰', `The VIP pays x${BAL.vipMul}, and x2 more with a video!`],
+    ],
+  },
+};
 
 function fmtTime(s) {
   s = Math.ceil(s);
@@ -39,6 +69,7 @@ export class UI {
     press($('#btn-daily'), () => this.openDaily());
     press($('#btn-dex'), () => this.openDex());
     press($('#btn-wheel'), () => this.openWheel());
+    press($('#btn-share'), () => this.openInvite());
     $('#tip').addEventListener('click', (e) => { e.stopPropagation(); this.hideTip(); });
     this.setProfile(game.state.profile);
     $('#world-badge').textContent = `${WORLD.icon} ${WORLD.name}`;
@@ -118,7 +149,7 @@ export class UI {
       <button class="btn wide big" id="w-go">✈️ Travel now</button>
       <button class="btn wide plain" id="w-later">Later</button>`, 'world-new');
     w.querySelector('#w-go').onclick = () => { g.audio.click(); this.closeModal(); g.travel(world.id); };
-    w.querySelector('#w-later').onclick = () => this.closeModal();
+    w.querySelector('#w-later').onclick = () => { this.closeModal(); setTimeout(() => Growth.maybeReview(g), 800); };
   }
 
   crowned() {
@@ -127,7 +158,7 @@ export class UI {
       <div class="w-title">Golden Ranch</div>
       <div class="off-txt">Every world is complete. All income is now doubled, in every world, for good.</div>
       <button class="btn wide big" id="w-ok">Awesome!</button>`, 'world-new');
-    w.querySelector('#w-ok').onclick = () => this.closeModal();
+    w.querySelector('#w-ok').onclick = () => { this.closeModal(); setTimeout(() => Growth.maybeReview(this.game), 800); };
   }
 
   travelling(world) {
@@ -244,6 +275,7 @@ export class UI {
     mb.classList.toggle('show', missionsReady > 0);
     $('#daily-badge').classList.toggle('show', g.progress.daily().available);
     $('#wheel-badge').classList.toggle('show', g.wheel.freeReady());
+    $('#share-badge').classList.toggle('show', g.shareReady());
     const chip = g.events.chip();
     const ce = $('#event-chip');
     ce.classList.toggle('show', !!chip);
@@ -321,6 +353,11 @@ export class UI {
     const sig = JSON.stringify([g.state.coins >= 0 ? Math.floor(g.state.coins) : 0, g.state.upgrades, UPGRADES.map((u) => Math.ceil(g.cooldownLeft('up_' + u.id)))]);
     if (!force && sig === this.upSig) return;
     this.upSig = sig;
+    // what the Snack Stand and the Doctor Deck will bring, before they are built
+    const soon = UPGRADES.filter((u) => u.teaser && !g.isUnlocked(u.requires)).map((u) => `<div class="up-card locked">
+        <div class="up-ico">${u.icon}</div>
+        <div class="up-info"><div class="up-name">${u.name}</div><div class="up-desc">${u.desc}</div></div>
+        <div class="up-lock">🔒 Build the<br>${u.teaser}</div></div>`).join('');
     list.innerHTML = UPGRADES.filter((u) => !u.requires || g.isUnlocked(u.requires)).map((u) => {
       const lv = g.state.upgrades[u.id];
       const maxed = lv >= u.max;
@@ -335,37 +372,52 @@ export class UI {
           <button class="btn buy" data-id="${u.id}" ${g.state.coins < cost ? 'disabled' : ''}><span class="coin-ico sm"></span>${formatNum(cost)}</button>
           <button class="btn ad" data-ad="${u.id}" ${cd > 0 || !Ads.canRequest ? 'disabled' : ''}>${cd > 0 ? fmtTime(cd) : '▶ FREE'}</button>`}
         </div></div>`;
-    }).join('');
+    }).join('') + soon;
     list.querySelectorAll('[data-id]').forEach((b) => b.onclick = () => { g.audio.click(); g.buyUpgrade(b.dataset.id); this.renderUpgrades(true); });
     list.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { g.audio.click(); await g.rewardFor('upgrade', b.dataset.ad); this.renderUpgrades(true); });
   }
 
   openSettings() {
     const g = this.game;
-    const AVATARS = ['👩‍🦰', '🧑‍🌾', '👨‍🌾', '👩', '🧔', '👧', '👦', '🧙', '🦸', '🥷'];
-    const p = g.state.profile;
-    const w = this.modal(`<div class="modal-head"><span>⚙️ Settings</span><button class="x">✕</button></div>
-      <div class="profile-edit"><div class="avatar"><span id="set-av">${p.avatar}</span></div>
-        <input id="set-name" maxlength="14" value="${p.name.replace(/[<>&"]/g, '')}" aria-label="Your name" autocomplete="off"></div>
-      <div class="avatar-pick">${AVATARS.map((a) => `<button data-av="${a}" class="${a === p.avatar ? 'on' : ''}">${a}</button>`).join('')}</div>
-      <label class="row"><span>🎨 Graphics</span><select id="set-quality">
-        ${['auto', 'high', 'low'].map((q) => `<option value="${q}" ${g.state.settings.quality === q ? 'selected' : ''}>${{ auto: 'Auto', high: 'High', low: 'Low (smooth)' }[q]}</option>`).join('')}
-      </select></label>
-      <label class="row"><span>🔊 Sound</span><input type="checkbox" id="set-sound" ${g.state.settings.sound ? 'checked' : ''}></label>
-      <label class="row"><span>📳 Vibration</span><input type="checkbox" id="set-haptic" ${g.state.settings.haptics ? 'checked' : ''}></label>
-      <button class="btn wide" id="set-worlds">🗺️ World map</button>
-      <button class="btn wide plain" id="set-how">❓ How to play</button>
-      ${Ads.privacyRequired ? '<button class="btn wide" id="set-privacy">🔒 Privacy options</button>' : ''}
-      <div class="stats">Caught: ${formatNum(g.state.stats.caught)} · Sold: ${formatNum(g.state.stats.sold)} · Earned: ${formatNum(g.state.stats.earned)}</div>
-      <button class="btn wide danger" id="set-reset">Reset progress</button>
-      <div class="ver">${GAME_NAME} v1.0.9${ADS.testMode ? ' · test ads' : ''}</div>
-      <div class="ver">Ads: video ${Ads.rewardedLoaded ? 'ready' : 'loading'} · banner ${Ads.bannerStatus}</div>`, 'settings');
+    const AVATARS = ['👩‍🦰', '🧑‍🌾', '🤠', '👩', '🧔', '👧', '👦', '🧙', '🦸', '🥷'];
+    const p = g.state.profile, s = g.state.settings, st = g.state.stats;
+    const running = `${s.quality === 'auto' ? 'Auto chose' : 'Running'} ${g.low ? 'Low' : 'High'}`;
+    const w = this.modal(`<div class="modal-head"><span>⚙️ Settings</span><button class="x" aria-label="Close">✕</button></div>
+      <div class="set-profile">
+        <div class="avatar"><span id="set-av">${p.avatar}</span></div>
+        <label class="set-name"><span>Rancher name</span>
+          <input id="set-name" maxlength="14" value="${p.name.replace(/[<>&"]/g, '')}" autocomplete="off" spellcheck="false" enterkeyhint="done"></label>
+      </div>
+      <div class="avatar-pick" role="group" aria-label="Avatar">${AVATARS.map((a) => `<button data-av="${a}" class="${a === p.avatar ? 'on' : ''}" aria-pressed="${a === p.avatar}">${a}</button>`).join('')}</div>
+      <div class="set-group">
+        <div class="set-row stack">
+          <div class="set-line"><span class="set-ico">🎨</span><span class="set-label">Graphics</span><span class="set-note" id="set-q-note">${running}</span></div>
+          <div class="seg" role="radiogroup" aria-label="Graphics">${['auto', 'high', 'low'].map((q) => `<label><input type="radio" name="set-q" value="${q}" ${s.quality === q ? 'checked' : ''}><span>${{ auto: 'Auto', high: 'High', low: 'Low · smooth' }[q]}</span></label>`).join('')}</div>
+        </div>
+        <label class="set-row"><span class="set-ico">🔊</span><span class="set-label">Sound</span><input type="checkbox" role="switch" class="switch" id="set-sound" ${s.sound ? 'checked' : ''}></label>
+        <label class="set-row"><span class="set-ico">📳</span><span class="set-label">Vibration</span><input type="checkbox" role="switch" class="switch" id="set-haptic" ${s.haptics ? 'checked' : ''}></label>
+      </div>
+      <div class="set-links">
+        <button class="set-link" id="set-worlds"><b>🗺️</b>World map</button>
+        <button class="set-link" id="set-how"><b>❓</b>How to play</button>
+        <button class="set-link" id="set-news"><b>🎉</b>What's new</button>
+      </div>
+      <div class="set-stats"><b>${formatNum(st.caught)}</b> caught · <b>${formatNum(st.sold)}</b> sold · <b>${formatNum(st.earned)}</b> coins earned</div>
+      <div class="set-foot">
+        <button class="set-text" id="set-rate">⭐ Rate the game</button>
+        ${Ads.privacyRequired ? '<button class="set-text" id="set-privacy">🔒 Privacy options</button>' : ''}
+        <button class="set-text danger" id="set-reset">Reset progress</button>
+      </div>
+      <div class="ver">${GAME_NAME} v${VERSION}${ADS.testMode ? ' · test ads' : ''}</div>
+      ${ADS.testMode ? `<div class="ver">Ads: video ${Ads.rewardedLoaded ? 'ready' : 'loading'} · banner ${Ads.bannerStatus}</div>` : ''}`, 'settings');
     w.querySelector('.x').onclick = () => this.closeModal();
-    w.querySelector('#set-sound').onchange = (e) => { g.state.settings.sound = e.target.checked; g.audio.enabled = e.target.checked; g.save(); };
-    w.querySelector('#set-haptic').onchange = (e) => { g.state.settings.haptics = e.target.checked; g.save(); };
+    w.querySelector('#set-sound').onchange = (e) => { s.sound = e.target.checked; g.audio.enabled = e.target.checked; g.audio.click(); g.save(); };
+    w.querySelector('#set-haptic').onchange = (e) => { s.haptics = e.target.checked; g.save(); g.haptic(); };
     w.querySelector('#set-privacy')?.addEventListener('click', () => Ads.showPrivacyOptions());
+    w.querySelector('#set-rate').onclick = () => { g.audio.click(); Growth.openStore(); };
     w.querySelector('#set-worlds').onclick = () => { g.audio.click(); this.openWorldMap(); };
     w.querySelector('#set-how').onclick = () => { g.audio.click(); this.howToPlay(false); };
+    w.querySelector('#set-news').onclick = () => { g.audio.click(); this.whatsNew(); };
     const name = w.querySelector('#set-name');
     name.addEventListener('keydown', (e) => e.stopPropagation()); // WASD shouldn't move the player while typing
     name.addEventListener('change', () => {
@@ -379,15 +431,16 @@ export class UI {
       g.audio.click();
       p.avatar = b.dataset.av;
       w.querySelector('#set-av').textContent = p.avatar;
-      w.querySelectorAll('[data-av]').forEach((x) => x.classList.toggle('on', x === b));
+      w.querySelectorAll('[data-av]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
       this.setProfile(p);
       g.save();
     });
-    w.querySelector('#set-quality').onchange = (e) => {
-      g.state.settings.quality = e.target.value;
+    w.querySelectorAll('input[name="set-q"]').forEach((r) => r.onchange = () => {
+      g.audio.click();
+      s.quality = r.value;
       g.save();
-      this.toast('Graphics change applies next time the game starts');
-    };
+      w.querySelector('#set-q-note').textContent = 'Changes next time you open the game';
+    });
     w.querySelector('#set-reset').onclick = () => this.confirmReset();
   }
 
@@ -442,11 +495,12 @@ export class UI {
     if (!body || !c) return;
     const hurt = g.player.stack.items.filter((it) => it.hurt).length;
     const cd = g.cooldownLeft('heal');
-    const sig = [c.queue.length + c.incoming, c.treating, hurt, c.healTime(), Ads.canRequest, Math.ceil(cd)].join();
+    const sig = [c.queue.length + c.incoming, c.treating, hurt, c.healTime(), c.feeMul(), c.owners.length, Ads.canRequest, Math.ceil(cd)].join();
     if (!force && sig === this.clSig) return;
     this.clSig = sig;
     const note = hurt ? `Handing over ${hurt} hurt critter${hurt > 1 ? 's' : ''}…`
-      : c.full ? 'The waiting room is full: heal them all now!' : 'Bring hurt critters 🩹 (white capsules). Healed ones pay x3!';
+      : c.full ? 'The waiting room is full: heal them all now!'
+        : `Bring hurt critters 🩹 (white capsules). Healed ones pay x${+c.feeMul().toFixed(2)}!${c.owners.length ? ' 🧑 Pet owners are waiting at the fence.' : ''}`;
     body.innerHTML = `<div class="cl-stats">
         <div><b>🤕 ${c.queue.length + c.incoming}/${BAL.clinicWaiting}</b>waiting</div>
         <div><b>🛏️ ${c.treating}/${c.beds.length}</b>in bed</div>
@@ -472,10 +526,28 @@ export class UI {
       <button class="btn wide ad big" id="vip-ad" ${Ads.canRequest ? '' : 'disabled'}>▶ Collect x2 <span class="coin-ico sm"></span>${formatNum(amount * 2)}</button>
       <button class="btn wide plain" id="vip-take">Collect</button>`, 'offline');
     g.setPause('popup', true);
-    const take = () => { g.earn(amount); g.coinBurstToHud(amount); g.audio.unlockFx(); this.closeModal(); };
+    // a happy break in play: Play's rating card may follow (Growth decides, Play has the last word)
+    const done = () => { this.closeModal(); setTimeout(() => Growth.maybeReview(g), 1200); };
+    const take = () => { g.earn(amount); g.coinBurstToHud(amount); g.audio.unlockFx(); done(); };
     this.backAction = take;
     w.querySelector('#vip-take').onclick = take;
-    w.querySelector('#vip-ad').onclick = async () => { if (await g.rewardFor('vip', amount * 2)) this.closeModal(); };
+    w.querySelector('#vip-ad').onclick = async () => { if (await g.rewardFor('vip', amount * 2)) done(); };
+  }
+
+  // ── invite friends ───────────────────────────────────────
+  openInvite() {
+    const g = this.game;
+    const reward = g.shareReady();
+    const w = this.modal(`<div class="modal-head"><span>📣 Invite friends</span><button class="x" aria-label="Close">✕</button></div>
+      <div class="w-big">🐾</div>
+      <div class="off-txt">Ranching is more fun with friends! Share Critter Ranch Tycoon on WhatsApp, Instagram or anywhere you like.</div>
+      <button class="btn wide big" id="inv-go">📣 Share now${reward ? ` <span class="coin-ico sm"></span>+${formatNum(g.freeCoinsAmount())}` : ''}</button>
+      <div class="m-foot">${reward ? 'Your first share each day pays coins.' : 'Today\'s share bonus is collected: come back tomorrow for more!'}</div>`, 'invite');
+    w.querySelector('.x').onclick = () => this.closeModal();
+    w.querySelector('#inv-go').onclick = async () => {
+      g.audio.click();
+      if (await g.invite()) this.closeModal();
+    };
   }
 
   // ── Lucky Wheel ──────────────────────────────────────────
@@ -489,7 +561,8 @@ export class UI {
     const w = this.modal(`<div class="modal-head"><span>🎡 Lucky Wheel</span><button class="x">✕</button></div>
       <div class="wheel-box"><div class="wheel" id="wheel">${segs}</div><div class="wheel-hub">⭐</div><div class="wheel-ptr"></div></div>
       <div class="wheel-res" id="wheel-res">Spin to win coins and boosts!</div>
-      <div id="wheel-btns"></div>`, 'wheel-modal');
+      <div id="wheel-btns"></div>
+      <div class="m-foot">A free spin every ${BAL.wheelFreeHours} hours, and up to ${BAL.wheelAdSpins} more a day with a video</div>`, 'wheel-modal');
     const wheel = w.querySelector('#wheel'), res = w.querySelector('#wheel-res');
     let rot = 0, spinning = false;
     w.querySelector('.x').onclick = () => { if (!spinning) this.closeModal(); };
@@ -651,14 +724,49 @@ export class UI {
         <div><b>📜</b>Missions, 📅 daily rewards and the 📖 Critterdex are on the left</div>
         <div><b>▶</b>Yellow video buttons on the right give free boosts</div>
         <div><b>👑</b>Watch out for boss critters and surprise events!</div>
-        <div><b>🏥</b>Hurt critters 🩹 heal at the Doctor Deck and pay x3</div>
-        <div><b>🚚</b>VIP trucks buy critters off the belt for x4, and 🎡 the Lucky Wheel gives free prizes</div>
+        <div><b>🏥</b>Hurt critters 🩹 heal at the Doctor Deck for x3, and pet owners visit it too</div>
+        <div><b>🍦</b>The Snack Stand sells ice cream to customers, 🚚 VIP trucks pay x4 and 🎡 the Lucky Wheel gives free prizes</div>
         <div><b>🗺️</b>Finish the last tile to travel to a new world</div>
       </div>
       <button class="btn wide big" id="how-ok">${first ? 'Start ranching!' : 'Got it'}</button>`, 'how-to');
     const done = () => { this.game.audio.click(); this.closeModal(); onDone?.(); };
     w.querySelector('#how-ok').onclick = done;
     w.querySelector('.x')?.addEventListener('click', done);
+  }
+
+  // the first time a feature appears: how it works, with the ranch paused behind the card
+  intro(id) {
+    const g = this.game, seen = g.state.intros || (g.state.intros = {});
+    const it = INTROS[id];
+    if (!it || seen[id]) return;
+    seen[id] = true;
+    g.save();
+    this.later(() => {
+      const w = this.modal(`<div class="modal-head center"><span>${it.title}</span></div>
+        <div class="w-big">${it.icon}</div>
+        <div class="how">${it.lines.map(([i, t]) => `<div><b>${i}</b>${t}</div>`).join('')}</div>
+        <button class="btn wide big" id="intro-ok">Got it!</button>`, 'how-to');
+      g.setPause('popup', true);
+      w.querySelector('#intro-ok').onclick = () => { g.audio.click(); this.closeModal(); };
+    });
+  }
+
+  // once per update, for players who already know the game
+  whatsNew() {
+    const g = this.game;
+    g.state.news = NEWS;
+    g.save();
+    const w = this.modal(`<div class="modal-head center"><span>🎉 New on your ranch!</span></div>
+      <div class="how">
+        <div><b>🏥</b><span><strong>Doctor Deck</strong> (after the East Pasture): heal hurt critters 🩹 for x3 coins. Pet owners bring sick pets too!</span></div>
+        <div><b>🍦</b><span><strong>Snack Stand</strong> (after the Express Belt): customers line up for ice cream, and the coins ride the belt to you</span></div>
+        <div><b>🚚</b><span><strong>VIP trucks</strong>: fill their order in time for x${BAL.vipMul} coins</span></div>
+        <div><b>🎡</b><span><strong>Lucky Wheel</strong> (left side): a free spin every ${BAL.wheelFreeHours} hours</span></div>
+        <div><b>⬆️</b><span>4 new upgrades for the stand and the clinic</span></div>
+      </div>
+      <button class="btn wide big" id="news-ok">Let's go!</button>`, 'how-to');
+    g.setPause('popup', true);
+    w.querySelector('#news-ok').onclick = () => { g.audio.click(); this.closeModal(); };
   }
 
   tip(text) {

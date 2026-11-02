@@ -114,7 +114,10 @@ export class Pen {
     // rigged giants breathe through their idle clip; the squash on producing stays
     const breathe = this.giant.animate ? 0 : Math.sin(this.phase * 1.6) * 0.025;
     this.giant.body.scale.set(1 - breathe * 0.5 - b * 0.4, 1 + breathe + b, 1 - breathe * 0.5 - b * 0.4);
-    if (this.giant.animate) this.giant.animate(dt, 'idle');
+    if (this.giant.animate) {
+      this.giant.lod = g.animLod(this.group.position);
+      this.giant.animate(dt, 'idle');
+    }
     this.bubble.position.y = this.giantH + 0.9 + Math.sin(this.phase * 3) * 0.1;
     this.bubble.visible = this.coinPad.value > 0;
   }

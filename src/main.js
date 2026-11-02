@@ -12,6 +12,8 @@ import { setWorld, worldSpecies } from './world/worlds.js';
 import { loadState } from './save.js';
 import { QUALITY } from './quality.js';
 import { Net } from './net.js';
+import { NEWS } from './config.js';
+import { Growth } from './growth.js';
 
 async function boot() {
   const bootEl = document.getElementById('boot');
@@ -84,12 +86,15 @@ async function boot() {
   game.onTutorialDone = banner;
 
   const start = () => {
+    game.state.sessions = (game.state.sessions || 0) + 1; // the review card waits for returning players
     game.play();
     banner();
     if (travelled) ui.arrived(world);
     else if (game.state.stats.caught > 0) game.checkOffline(lastSeen);
     // the daily reward greets returning players (new players see it from their second day)
     if (game.state.tutorialDone && game.progress.daily().available) ui.later(() => ui.openDaily());
+    // after an update: what's new, once (new players learn it all in the guide)
+    if (game.state.tutorialDone && game.state.news !== NEWS) ui.later(() => ui.whatsNew());
   };
   // arriving from the world map goes straight into the game
   if (travelled || resumed) { ui.skipTitle(); start(); } else ui.title(start);
@@ -100,12 +105,15 @@ async function boot() {
   // Capacitor's pause/resume events are used, because some phones only report one of them.
   let awayAt = 0;
   const leave = () => {
-    if (awayAt || Ads.showing) return; // an ad on top of the game is handled by ads.js
+    // an ad on top of the game is handled by ads.js; the share sheet, Play page or review card is a
+    // short trip the player chose, so no pause screen for it
+    if (awayAt || Ads.showing || Growth.busy) return;
     awayAt = Date.now();
     game.setPause('away', true);
     game.save();
   };
   const comeBack = () => {
+    if (Growth.busy && !awayAt) { Growth.busy = false; return; }
     if (!awayAt || Ads.showing) return;
     const since = awayAt;
     awayAt = 0;

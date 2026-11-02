@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(GrowthPlugin.class); // share, Play page, in-app review (must come before super)
         super.onCreate(savedInstanceState);
         // Android may kill the WebView's renderer process when the phone is low on memory (often while
         // the game is in the background). Unhandled, that crashes the whole app; instead rebuild the
